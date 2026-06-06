@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "public",
   "rewrites": [
     {
       "source": "/:id(\\d{12,15})",
