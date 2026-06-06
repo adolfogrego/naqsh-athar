@@ -49,7 +49,11 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { html } = req.body;
+    let { html } = req.body;
+    // DOCTYPE is never included in outerHTML — add defensively
+    if (html && !html.startsWith('<!DOCTYPE')) {
+      html = '<!DOCTYPE html>\n' + html;
+    }
     const validation = validateHtml(html);
     if (!validation.ok) {
       console.error('Validation failed:', validation.reason);
