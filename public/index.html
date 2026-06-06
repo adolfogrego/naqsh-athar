@@ -1366,7 +1366,24 @@ dlPdf.addEventListener('click',async function(e){ e.stopPropagation();
 dlHtml.addEventListener('click', function(e) {
   e.stopPropagation();
   if(!croppedLowRes) return;
+  // Reset DOM to empty state before capture
+  const trazoBgEl2 = document.getElementById('act-trazo-bg');
+  const trazoPortalEl2 = document.getElementById('act-trazo-portal');
+  const resultCanvasEl2 = document.getElementById('act-result-canvas');
+  const introEl2 = document.getElementById('act-intro');
+  if(trazoBgEl2)      trazoBgEl2.classList.remove('hidden');
+  if(trazoPortalEl2)  trazoPortalEl2.style.display = 'flex';
+  if(resultCanvasEl2) resultCanvasEl2.classList.remove('on');
+  if(introEl2)        introEl2.classList.remove('hidden');
+
   let newSrc = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+  // Restore state
+  if(trazoBgEl2)      trazoBgEl2.classList.add('hidden');
+  if(trazoPortalEl2)  trazoPortalEl2.style.display = 'none';
+  if(resultCanvasEl2) resultCanvasEl2.classList.add('on');
+  if(introEl2)        introEl2.classList.add('hidden');
+
   newSrc = newSrc.replace(/id="portada-circle"[^>]*src="[^"]*"/,
     'id="portada-circle" src="'+croppedLowRes+'"');
   newSrc = newSrc.replace('</head>',
@@ -1427,7 +1444,27 @@ async function attemptUpload() {
     if(navigator.onLine) {
       (async () => {
         try {
+          // Reset DOM state before capturing — ensure trazo is visible in new HTML
+          const trazoBgEl = document.getElementById('act-trazo-bg');
+          const trazoPortalEl = document.getElementById('act-trazo-portal');
+          const resultCanvasEl = document.getElementById('act-result-canvas');
+          const grabbingEl = document.getElementById('act-grabbing');
+          const introEl = document.getElementById('act-intro');
+          // Temporarily reset to empty state for clean capture
+          if(trazoBgEl)     trazoBgEl.classList.remove('hidden');
+          if(trazoPortalEl) trazoPortalEl.style.display = 'flex';
+          if(resultCanvasEl) resultCanvasEl.classList.remove('on');
+          if(grabbingEl)    grabbingEl.classList.remove('on');
+          if(introEl)       introEl.classList.remove('hidden');
+
           let newSrc = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+          // Restore state after capture
+          if(trazoBgEl)     trazoBgEl.classList.add('hidden');
+          if(trazoPortalEl) trazoPortalEl.style.display = 'none';
+          if(resultCanvasEl) resultCanvasEl.classList.add('on');
+          if(introEl)       introEl.classList.add('hidden');
+
           newSrc = newSrc.replace(/id="portada-circle"[^>]*src="[^"]*"/,
             'id="portada-circle" src="'+croppedLowRes+'"');
           newSrc = newSrc.replace('</head>',
