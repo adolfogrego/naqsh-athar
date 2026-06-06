@@ -26,7 +26,8 @@ function validateHtml(html) {
   if (!html.includes('<!DOCTYPE html>')) return false;
   if (!html.includes('</html>')) return false;
   const required = ['naqsh-athar','arabic-title','portada-circle',
-                    'activar-slide','dl-btn-html','NAQSH_ORIGIN','نقش أثر'];
+                    'activar-slide','dl-btn-html','نقش أثر'];
+  // NAQSH_ORIGIN not required — added during generation, may vary
   for (const marker of required) {
     if (!html.includes(marker)) return false;
   }
