@@ -1144,43 +1144,48 @@ function addCrownToQR(qrDataUrl, callback) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    // ── Arabic above — draw using textPath on arc ──────────────────
+    // Use measureText to space chars evenly, upright on arc
     const arabicText = 'نقش أثر';
-    // Place on arc above center
-    const startAngle = -Math.PI * 0.72;
-    const endAngle   = -Math.PI * 0.28;
-    const angleRange = endAngle - startAngle;
+    ctx.font = 'bold ' + Math.round(CROWN * 0.58) + 'px Amiri, serif';
+    ctx.fillStyle = INK;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    // Arc: top half, from -150° to -30°
+    const arcR = QR/2 + CROWN * 0.52;
+    const aStart = -Math.PI * 0.82;
+    const aEnd   = -Math.PI * 0.18;
     const chars = [...arabicText];
     chars.forEach((ch, i) => {
-      const angle = startAngle + (i / (chars.length - 1)) * angleRange;
-      const x = cx + R_arc * Math.cos(angle);
-      const y = cy + R_arc * Math.sin(angle);
+      const t = chars.length > 1 ? i/(chars.length-1) : 0.5;
+      const angle = aStart + t*(aEnd-aStart);
       ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle + Math.PI / 2);
+      ctx.translate(cx + arcR*Math.cos(angle), cy + arcR*Math.sin(angle));
+      // Rotate so char stands upright on arc (tangent + 90°)
+      ctx.rotate(angle + Math.PI/2);
       ctx.fillText(ch, 0, 0);
       ctx.restore();
     });
     ctx.restore();
 
-    // ── URL below — arc following bottom of circle ────────────────
+    // ── URL below — arc following bottom, chars upright ───────────
     ctx.save();
-    ctx.font = Math.round(CROWN * 0.38) + 'px "EB Garamond", Georgia, serif';
+    ctx.font = 'bold ' + Math.round(CROWN * 0.34) + 'px "EB Garamond", Georgia, serif';
     ctx.fillStyle = INK;
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
+    ctx.textBaseline = 'alphabetic';
     const urlText = 'naqsh-athar.link';
-    const startAngleB = Math.PI * 0.22;
-    const endAngleB   = Math.PI * 0.78;
-    const angleRangeB = endAngleB - startAngleB;
+    // Arc: bottom half, from 20° to 160°
+    const bStart = Math.PI * 0.11;
+    const bEnd   = Math.PI * 0.89;
     const charsB = [...urlText];
     charsB.forEach((ch, i) => {
-      const angle = startAngleB + (i / (charsB.length - 1)) * angleRangeB;
-      const x = cx + R_arc * Math.cos(angle);
-      const y = cy + R_arc * Math.sin(angle);
+      const t = charsB.length > 1 ? i/(charsB.length-1) : 0.5;
+      const angle = bStart + t*(bEnd-bStart);
       ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle - Math.PI / 2);
+      ctx.translate(cx + arcR*Math.cos(angle), cy + arcR*Math.sin(angle));
+      // For bottom arc: rotate so char reads outward (tangent - 90°)
+      ctx.rotate(angle - Math.PI/2);
       ctx.fillText(ch, 0, 0);
       ctx.restore();
     });
