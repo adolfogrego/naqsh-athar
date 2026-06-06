@@ -20,23 +20,24 @@ function generateId() {
 }
 
 function validateHtml(html) {
-  if (typeof html !== 'string') return false;
+  if (typeof html !== 'string') return { ok: false, reason: 'not a string' };
   const sizeKB = Buffer.byteLength(html, 'utf8') / 1024;
-  if (sizeKB > 1024) return false;
-  if (!html.includes('<!DOCTYPE html>')) return false;
-  if (!html.includes('</html>')) return false;
-  // Must contain Naqsh-Athar structural markers
+  if (sizeKB > 1024) return { ok: false, reason: `too large: ${sizeKB.toFixed(0)}KB` };
+  if (!html.includes('<!DOCTYPE html>')) return { ok: false, reason: 'missing DOCTYPE' };
+  if (!html.includes('</html>')) return { ok: false, reason: 'missing </html>' };
+
   const required = ['naqsh-athar', 'arabic-title', 'portada-circle',
                     'activar-slide', 'dl-btn-html', 'نقش أثر'];
   for (const marker of required) {
-    if (!html.includes(marker)) return false;
+    if (!html.includes(marker)) return { ok: false, reason: `missing marker: ${marker}` };
   }
-  // Only block truly malicious patterns (not CDN scripts)
+
   const forbidden = ['eval(', 'document.cookie'];
   for (const pattern of forbidden) {
-    if (html.includes(pattern)) return false;
+    if (html.includes(pattern)) return { ok: false, reason: `forbidden: ${pattern}` };
   }
-  return true;
+
+  return { ok: true };
 }
 
 export default async function handler(req, res) {
@@ -49,8 +50,10 @@ export default async function handler(req, res) {
 
   try {
     const { html } = req.body;
-    if (!validateHtml(html)) {
-      return res.status(400).json({ error: 'Contenido inválido' });
+    const validation = validateHtml(html);
+    if (!validation.ok) {
+      console.error('Validation failed:', validation.reason);
+      return res.status(400).json({ error: 'Contenido inválido', reason: validation.reason });
     }
 
     let id = generateId();
@@ -73,6 +76,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('guardar error:', err);
-    return res.status(500).json({ error: 'Error al guardar' });
+    return res.status(500).json({ error: 'Error al guardar', detail: err.message });
   }
 }
