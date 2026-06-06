@@ -1375,10 +1375,19 @@ function generateStyledQR(url, photoDataUrl, callback) {
     qr.make();
     doRender(qr);
   }
+  // qrcode-generator gives matrix access via isDark()
   if(window.qrcode) { buildQR(); return; }
   const s = document.createElement('script');
-  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
   s.onload = buildQR;
+  s.onerror = function() {
+    // CDN fallback
+    const s2 = document.createElement('script');
+    s2.src = 'https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';
+    s2.onload = buildQR;
+    s2.onerror = function() { showOfflineResult(); };
+    document.head.appendChild(s2);
+  };
   document.head.appendChild(s);
 }
 
