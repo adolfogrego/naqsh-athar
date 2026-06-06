@@ -25,13 +25,14 @@ function validateHtml(html) {
   if (sizeKB > 1024) return false;
   if (!html.includes('<!DOCTYPE html>')) return false;
   if (!html.includes('</html>')) return false;
-  const required = ['naqsh-athar','arabic-title','portada-circle',
-                    'activar-slide','dl-btn-html','نقش أثر'];
-  // NAQSH_ORIGIN not required — added during generation, may vary
+  // Must contain Naqsh-Athar structural markers
+  const required = ['naqsh-athar', 'arabic-title', 'portada-circle',
+                    'activar-slide', 'dl-btn-html', 'نقش أثر'];
   for (const marker of required) {
     if (!html.includes(marker)) return false;
   }
-  const forbidden = ['<script src="http','eval(','document.cookie'];
+  // Only block truly malicious patterns (not CDN scripts)
+  const forbidden = ['eval(', 'document.cookie'];
   for (const pattern of forbidden) {
     if (html.includes(pattern)) return false;
   }
@@ -39,18 +40,12 @@ function validateHtml(html) {
 }
 
 export default async function handler(req, res) {
-  // Allow CORS from any origin (needed for local file execution)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const { html } = req.body;
@@ -66,11 +61,9 @@ export default async function handler(req, res) {
       const ms = String(new Date().getMilliseconds()).padStart(3,'0');
       id = id + ms;
       filename = `${id}.html`;
-    } catch {
-      // No collision
-    }
+    } catch { /* no collision */ }
 
-    const blob = await put(filename, html, {
+    await put(filename, html, {
       access: 'public',
       contentType: 'text/html; charset=utf-8',
     });
