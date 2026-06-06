@@ -1141,9 +1141,10 @@ function generateCircularQR(url, size, callback) {
 
 // ══ DOWNLOAD PNG (circle only) ══
 dlPng.addEventListener('click',function(e){ e.stopPropagation();
-  const photo = croppedJpg;
-  if(!photo) return;
-  downloadStyledPng(photo, 'naqsh-athar.png');
+  // Use styled QR (photo+QR composite) as the circle image
+  const img = window._styledQRUrl || croppedJpg;
+  if(!img) return;
+  downloadStyledPng(img, 'naqsh-athar.png');
 });
 
 // Generate PNG using SVG template — photo injected into circle
