@@ -1106,12 +1106,90 @@ function generateCircularQR(url, size, callback) {
 
 // ══ DOWNLOAD PNG (circle only) ══
 dlPng.addEventListener('click',function(e){ e.stopPropagation();
-  // Download styled QR image if available, else raw circle
   const src2 = window._styledQRUrl || window._resultImageUrl || croppedJpg;
   if(!src2) return;
-  const a=document.createElement('a');
-  a.href=src2; a.download='naqsh-athar.png'; a.click();
+  // Add typographic crown (arabic above, url below curved)
+  addCrownToQR(src2, function(crownedUrl) {
+    const a = document.createElement('a');
+    a.href = crownedUrl; a.download = 'naqsh-athar.png'; a.click();
+  });
 });
+
+// Add typographic crown to QR image
+function addCrownToQR(qrDataUrl, callback) {
+  const QR = 400;          // QR size
+  const CROWN = 80;        // extra space for text above and below
+  const TOTAL = QR + CROWN * 2;
+  const cx = TOTAL / 2;
+  const cy = TOTAL / 2;
+
+  const c = document.createElement('canvas');
+  c.width = c.height = TOTAL;
+  const ctx = c.getContext('2d');
+  // Transparent background
+  ctx.clearRect(0, 0, TOTAL, TOTAL);
+
+  const img = new Image();
+  img.onload = function() {
+    // Draw QR centered with crown padding
+    ctx.drawImage(img, CROWN, CROWN, QR, QR);
+
+    const INK = 'rgba(26,16,8,0.92)';
+    const R_arc = QR / 2 + CROWN * 0.55; // arc radius for text
+
+    // ── Arabic above — arc following top of circle ────────────────
+    ctx.save();
+    ctx.font = 'bold ' + Math.round(CROWN * 0.62) + 'px Amiri, serif';
+    ctx.fillStyle = INK;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const arabicText = 'نقش أثر';
+    // Place on arc above center
+    const startAngle = -Math.PI * 0.72;
+    const endAngle   = -Math.PI * 0.28;
+    const angleRange = endAngle - startAngle;
+    const chars = [...arabicText];
+    chars.forEach((ch, i) => {
+      const angle = startAngle + (i / (chars.length - 1)) * angleRange;
+      const x = cx + R_arc * Math.cos(angle);
+      const y = cy + R_arc * Math.sin(angle);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle + Math.PI / 2);
+      ctx.fillText(ch, 0, 0);
+      ctx.restore();
+    });
+    ctx.restore();
+
+    // ── URL below — arc following bottom of circle ────────────────
+    ctx.save();
+    ctx.font = Math.round(CROWN * 0.38) + 'px "EB Garamond", Georgia, serif';
+    ctx.fillStyle = INK;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const urlText = 'naqsh-athar.link';
+    const startAngleB = Math.PI * 0.22;
+    const endAngleB   = Math.PI * 0.78;
+    const angleRangeB = endAngleB - startAngleB;
+    const charsB = [...urlText];
+    charsB.forEach((ch, i) => {
+      const angle = startAngleB + (i / (charsB.length - 1)) * angleRangeB;
+      const x = cx + R_arc * Math.cos(angle);
+      const y = cy + R_arc * Math.sin(angle);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle - Math.PI / 2);
+      ctx.fillText(ch, 0, 0);
+      ctx.restore();
+    });
+    ctx.restore();
+
+    callback(c.toDataURL('image/png'));
+  };
+  img.src = qrDataUrl;
+}
 
 // ══ GENERATE PDF ══
 dlPdf.addEventListener('click',async function(e){ e.stopPropagation();
