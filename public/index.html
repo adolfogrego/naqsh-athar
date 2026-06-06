@@ -1362,24 +1362,28 @@ function generateStyledQR(url, photoDataUrl, callback) {
         }
       }
 
-      // Finder patterns: outer ring + gap (transparent) + inner dot
+      // Finder patterns on separate canvas — preserves photo beneath gap
+      const finderC = document.createElement('canvas');
+      finderC.width = finderC.height = SIZE;
+      const fctx = finderC.getContext('2d');
       for(const [fx,fy] of finders){
         const ro=cell*3.5, rg=cell*2.5, ri=cell*1.5;
         if(Math.hypot(fx-R,fy-R)+ro>r_inner+ro*0.3) continue;
-        // Outer filled ring
-        ctx.beginPath(); ctx.arc(fx,fy,ro,0,Math.PI*2);
-        ctx.fillStyle=INK; ctx.fill();
-        // Punch transparent hole using destination-out
-        ctx.save();
-        ctx.globalCompositeOperation='destination-out';
-        ctx.beginPath(); ctx.arc(fx,fy,rg,0,Math.PI*2);
-        ctx.fillStyle='rgba(0,0,0,1)';
-        ctx.fill();
-        ctx.restore();
+        // Outer ring
+        fctx.beginPath(); fctx.arc(fx,fy,ro,0,Math.PI*2);
+        fctx.fillStyle=INK; fctx.fill();
+        // Gap — erase on this canvas only (photo shows through from main canvas)
+        fctx.save();
+        fctx.globalCompositeOperation='destination-out';
+        fctx.beginPath(); fctx.arc(fx,fy,rg,0,Math.PI*2);
+        fctx.fillStyle='rgba(0,0,0,1)'; fctx.fill();
+        fctx.restore();
         // Inner dot
-        ctx.beginPath(); ctx.arc(fx,fy,ri,0,Math.PI*2);
-        ctx.fillStyle=INK; ctx.fill();
+        fctx.beginPath(); fctx.arc(fx,fy,ri,0,Math.PI*2);
+        fctx.fillStyle=INK; fctx.fill();
       }
+      // Composite finder layer on top of photo+dots
+      ctx.drawImage(finderC,0,0);
 
       // Outer border
       ctx.beginPath();
