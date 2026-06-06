@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/:id(\\d{12,15})",
+      "destination": "/api/[id]?id=:id"
+    }
+  ],
+  "functions": {
+    "api/guardar.js": {
+      "maxDuration": 30
+    },
+    "api/[id].js": {
+      "maxDuration": 10
+    }
+  }
+}
