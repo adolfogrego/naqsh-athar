@@ -1400,49 +1400,69 @@ function generateResultImage(jpgDataUrl, callback) {
 
 async function attemptUpload() {
   if(!croppedJpg||!croppedLowRes){ setMode('confirmed'); return; }
-  if(navigator.onLine) {
-    try {
-      let newSrc = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-      newSrc = newSrc.replace(/id="portada-circle"[^>]*src="[^"]*"/,
-        'id="portada-circle" src="'+croppedLowRes+'"');
-      newSrc = newSrc.replace('</head>',
-        '<!-- NAQSH_ORIGIN: '+window.location.href+' -->\n</head>');
-      const apiUrl = window.location.protocol === 'file:'
-        ? 'https://naqsh-athar.link/api/guardar'
-        : '/api/guardar';
-      const resp = await fetch(apiUrl,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({html:newSrc})
-      });
-      if(!resp.ok) {
-        const errText = await resp.text().catch(()=>'');
-        throw new Error('server ' + resp.status + ': ' + errText.slice(0,100));
-      }
-      const {url} = await resp.json();
-      window._portalUrl = url;
-      generateStyledQR(url, croppedJpg, function(qrDataUrl) {
-        window._styledQRUrl = qrDataUrl;
-        const rc = document.getElementById('act-result-canvas');
-        if(rc) {
-          const img2 = new Image();
-          img2.onload = function() {
-            rc.width = rc.offsetWidth||200;
-            rc.height = rc.offsetHeight||200;
-            rc.getContext('2d').drawImage(img2,0,0,rc.width,rc.height);
-          };
-          img2.src = qrDataUrl;
-        }
-        setMode('confirmed');
-      });
-    } catch(e) {
-      console.warn('Upload failed:', e.message || e);
-      setSt('error: ' + (e.message || 'sin conexión'), false);
-      setTimeout(()=>showOfflineResult(), 1500);
+
+  const BASE_URL = 'https://naqsh-athar.link';
+
+  // Helper: render QR to result canvas and store it
+  function renderQR(qrDataUrl) {
+    window._styledQRUrl = qrDataUrl;
+    const rc = document.getElementById('act-result-canvas');
+    if(rc) {
+      const img2 = new Image();
+      img2.onload = function() {
+        rc.width = rc.offsetWidth||200;
+        rc.height = rc.offsetHeight||200;
+        rc.getContext('2d').drawImage(img2,0,0,rc.width,rc.height);
+      };
+      img2.src = qrDataUrl;
     }
-  } else {
-    showOfflineResult();
   }
+
+  // Step 1: Always generate QR with base URL immediately — no waiting for server
+  generateStyledQR(BASE_URL, croppedJpg, function(baseQrDataUrl) {
+    renderQR(baseQrDataUrl);
+    setMode('confirmed');
+
+    // Step 2: If online, attempt upload in background and update QR if successful
+    if(navigator.onLine) {
+      (async () => {
+        try {
+          let newSrc = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+          newSrc = newSrc.replace(/id="portada-circle"[^>]*src="[^"]*"/,
+            'id="portada-circle" src="'+croppedLowRes+'"');
+          newSrc = newSrc.replace('</head>',
+            '<!-- NAQSH_ORIGIN: '+window.location.href+' -->\n</head>');
+          const apiUrl = window.location.protocol === 'file:'
+            ? 'https://naqsh-athar.link/api/guardar'
+            : '/api/guardar';
+          const resp = await fetch(apiUrl,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({html:newSrc})
+          });
+          if(!resp.ok) throw new Error('server ' + resp.status);
+          const {url} = await resp.json();
+          window._portalUrl = url;
+          // Update QR with personalized URL
+          generateStyledQR(url, croppedJpg, function(personalQrDataUrl) {
+            renderQR(personalQrDataUrl);
+            // Hide portal button — we have the personalized URL
+            const bp = document.getElementById('btn-portal');
+            if(bp) bp.classList.remove('on');
+          });
+        } catch(e) {
+          console.warn('Background upload failed:', e.message || e);
+          // Show portal button for retry — base QR already visible
+          const bp = document.getElementById('btn-portal');
+          if(bp){ bp.classList.add('on'); bp.textContent='Generar portal personalizado'; }
+        }
+      })();
+    } else {
+      // Offline — show portal button for when they get connection
+      const bp = document.getElementById('btn-portal');
+      if(bp){ bp.classList.add('on'); bp.textContent='Generar portal personalizado'; }
+    }
+  });
 }
 
 function showOfflineResult() {
