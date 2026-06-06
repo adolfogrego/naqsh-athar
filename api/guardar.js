@@ -25,41 +25,34 @@ function validateHtml(html) {
   if (sizeKB > 1024) return false;
   if (!html.includes('<!DOCTYPE html>')) return false;
   if (!html.includes('</html>')) return false;
-
-  const required = [
-    'naqsh-athar',
-    'arabic-title',
-    'portada-circle',
-    'activar-slide',
-    'dl-btn-html',
-    'NAQSH_ORIGIN',
-    'نقش أثر',
-  ];
+  const required = ['naqsh-athar','arabic-title','portada-circle',
+                    'activar-slide','dl-btn-html','NAQSH_ORIGIN','نقش أثر'];
   for (const marker of required) {
     if (!html.includes(marker)) return false;
   }
-
-  const forbidden = [
-    '<script src="http',
-    'eval(',
-    'document.cookie',
-    'localStorage',
-  ];
+  const forbidden = ['<script src="http','eval(','document.cookie'];
   for (const pattern of forbidden) {
     if (html.includes(pattern)) return false;
   }
-
   return true;
 }
 
 export default async function handler(req, res) {
+  // Allow CORS from any origin (needed for local file execution)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { html } = req.body;
-
     if (!validateHtml(html)) {
       return res.status(400).json({ error: 'Contenido inválido' });
     }
@@ -67,17 +60,15 @@ export default async function handler(req, res) {
     let id = generateId();
     let filename = `${id}.html`;
 
-    // Check for collision — add milliseconds if needed
     try {
       await head(filename);
       const ms = String(new Date().getMilliseconds()).padStart(3,'0');
       id = id + ms;
       filename = `${id}.html`;
     } catch {
-      // No collision, proceed
+      // No collision
     }
 
-    // OIDC auth is automatic when running on Vercel with BLOB_STORE_ID
     const blob = await put(filename, html, {
       access: 'public',
       contentType: 'text/html; charset=utf-8',
