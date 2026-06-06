@@ -1227,7 +1227,10 @@ async function attemptUpload() {
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({html:newSrc})
       });
-      if(!resp.ok) throw new Error('server error');
+      if(!resp.ok) {
+        const errText = await resp.text().catch(()=>'');
+        throw new Error('server ' + resp.status + ': ' + errText.slice(0,100));
+      }
       const {url} = await resp.json();
       window._portalUrl = url;
       generateStyledQR(url, croppedJpg, function(qrDataUrl) {
@@ -1245,8 +1248,9 @@ async function attemptUpload() {
         setMode('confirmed');
       });
     } catch(e) {
-      console.warn('Upload failed:', e);
-      showOfflineResult();
+      console.warn('Upload failed:', e.message || e);
+      setSt('error: ' + (e.message || 'sin conexión'), false);
+      setTimeout(()=>showOfflineResult(), 1500);
     }
   } else {
     showOfflineResult();
@@ -1358,14 +1362,21 @@ function generateStyledQR(url, photoDataUrl, callback) {
         }
       }
 
-      // Finder patterns: outer ring + gap + inner dot
+      // Finder patterns: outer ring + gap (transparent) + inner dot
       for(const [fx,fy] of finders){
         const ro=cell*3.5, rg=cell*2.5, ri=cell*1.5;
         if(Math.hypot(fx-R,fy-R)+ro>r_inner+ro*0.3) continue;
+        // Outer filled ring
         ctx.beginPath(); ctx.arc(fx,fy,ro,0,Math.PI*2);
         ctx.fillStyle=INK; ctx.fill();
+        // Punch transparent hole using destination-out
+        ctx.save();
+        ctx.globalCompositeOperation='destination-out';
         ctx.beginPath(); ctx.arc(fx,fy,rg,0,Math.PI*2);
-        ctx.fillStyle=WHITE; ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,1)';
+        ctx.fill();
+        ctx.restore();
+        // Inner dot
         ctx.beginPath(); ctx.arc(fx,fy,ri,0,Math.PI*2);
         ctx.fillStyle=INK; ctx.fill();
       }
