@@ -1179,8 +1179,8 @@ function addCrownToQR(qrDataUrl, callback) {
     ctx.textBaseline = 'alphabetic';
     // Arc: top half, from -150° to -30°
     const arcR = QR/2 + CROWN * 0.52;
-    const aStart = -Math.PI * 0.82;
-    const aEnd   = -Math.PI * 0.18;
+    const aStart = -Math.PI * 0.68;
+    const aEnd   = -Math.PI * 0.32;
     const chars = [...arabicText];
     chars.forEach((ch, i) => {
       const t = chars.length > 1 ? i/(chars.length-1) : 0.5;
@@ -1202,8 +1202,8 @@ function addCrownToQR(qrDataUrl, callback) {
     ctx.textBaseline = 'alphabetic';
     const urlText = 'naqsh-athar.link';
     // Arc: bottom half, from 20° to 160°
-    const bStart = Math.PI * 0.11;
-    const bEnd   = Math.PI * 0.89;
+    const bStart = Math.PI * 0.22;
+    const bEnd   = Math.PI * 0.78;
     const charsB = [...urlText];
     charsB.forEach((ch, i) => {
       const t = charsB.length > 1 ? i/(charsB.length-1) : 0.5;
