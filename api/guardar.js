@@ -20,41 +20,31 @@ function generateId() {
 }
 
 function validateHtml(html) {
-  // 1. Must be a string
   if (typeof html !== 'string') return false;
-
-  // 2. Size check — max 1MB
   const sizeKB = Buffer.byteLength(html, 'utf8') / 1024;
   if (sizeKB > 1024) return false;
-
-  // 3. Must be valid HTML document
   if (!html.includes('<!DOCTYPE html>')) return false;
   if (!html.includes('</html>')) return false;
 
-  // 4. Must contain Naqsh-Athar structural markers
   const required = [
-    'naqsh-athar',           // project identifier
-    'arabic-title',          // arabic title element
-    'portada-circle',        // circle image
-    'activar-slide',         // activation slide
-    'dl-btn-html',           // download buttons
-    'NAQSH_ORIGIN',          // traceability comment
-    'نقش أثر',               // arabic text
+    'naqsh-athar',
+    'arabic-title',
+    'portada-circle',
+    'activar-slide',
+    'dl-btn-html',
+    'NAQSH_ORIGIN',
+    'نقش أثر',
   ];
-
   for (const marker of required) {
     if (!html.includes(marker)) return false;
   }
 
-  // 5. Must NOT contain suspicious patterns
   const forbidden = [
-    '<script src="http',     // external scripts not from our CDN
-    'eval(',                 // eval calls
-    'document.cookie',       // cookie theft
-    'localStorage',          // storage abuse
-    'fetch("http',           // arbitrary external fetches (allow relative)
+    '<script src="http',
+    'eval(',
+    'document.cookie',
+    'localStorage',
   ];
-
   for (const pattern of forbidden) {
     if (html.includes(pattern)) return false;
   }
@@ -87,6 +77,7 @@ export default async function handler(req, res) {
       // No collision, proceed
     }
 
+    // OIDC auth is automatic when running on Vercel with BLOB_STORE_ID
     const blob = await put(filename, html, {
       access: 'public',
       contentType: 'text/html; charset=utf-8',
