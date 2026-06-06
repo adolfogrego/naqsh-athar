@@ -698,13 +698,7 @@ let sliderLocked = false;
 function lockSlider()   { sliderLocked = true; }
 function unlockSlider() { sliderLocked = false; }
 
-function goTo(n) {
-  if(sliderLocked) return;
-  n = ((n % TOTAL_SLIDES) + TOTAL_SLIDES) % TOTAL_SLIDES;
-  current = n;
-  slidesEl.style.transform = `translateX(-${n * (100/TOTAL_SLIDES)}%)`;
-  dots.forEach((d,i) => d.classList.toggle('active', i===n));
-  // Fade to dark on activar slide
+function updateActivarBg(n) {
   const activarSlide = document.getElementById('activar-slide');
   if(activarSlide) {
     if(n === TOTAL_SLIDES-1) {
@@ -715,6 +709,38 @@ function goTo(n) {
       activarSlide.classList.remove('activar-dark');
     }
   }
+}
+
+function goTo(n) {
+  if(sliderLocked) return;
+  n = ((n % TOTAL_SLIDES) + TOTAL_SLIDES) % TOTAL_SLIDES;
+
+  const isCircularJump = (current === 0 && n === TOTAL_SLIDES-1) ||
+                         (current === TOTAL_SLIDES-1 && n === 0);
+
+  if(isCircularJump) {
+    slidesEl.style.transition = 'opacity .35s ease';
+    slidesEl.style.opacity = '0';
+    setTimeout(() => {
+      current = n;
+      slidesEl.style.transition = 'none';
+      slidesEl.style.transform = `translateX(-${n*(100/TOTAL_SLIDES)}%)`;
+      dots.forEach((d,i) => d.classList.toggle('active', i===n));
+      updateActivarBg(n);
+      slidesEl.getBoundingClientRect(); // force reflow
+      slidesEl.style.transition = 'opacity .35s ease';
+      slidesEl.style.opacity = '1';
+      setTimeout(()=>{
+        slidesEl.style.transition = 'transform .55s cubic-bezier(.77,0,.18,1)';
+      }, 360);
+    }, 360);
+    return;
+  }
+
+  current = n;
+  slidesEl.style.transform = `translateX(-${n*(100/TOTAL_SLIDES)}%)`;
+  dots.forEach((d,i) => d.classList.toggle('active', i===n));
+  updateActivarBg(n);
 }
 
 // Dots
