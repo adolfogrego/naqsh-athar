@@ -883,6 +883,7 @@ function setMode(m){
     window._cameraOpen = false;
   }
   if(m==='adjusting'){
+    lockSlider();
     dragImg.style.display='block';
     vp.style.visibility='visible'; vp.style.pointerEvents='auto';
     vp.classList.add('has-image');
@@ -892,6 +893,7 @@ function setMode(m){
     croppedJpg=null; croppedLowRes=null; show(btnAdj,confRow);
   }
   if(m==='grabbing'){
+    lockSlider();
     if(grabbing) grabbing.classList.add('on');
     if(introText) introText.classList.add('hidden');
     if(trazoBg)  trazoBg.classList.add('hidden');
