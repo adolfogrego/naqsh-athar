@@ -177,12 +177,20 @@
       display:block;margin:2rem auto 0;
       font-family:'EB Garamond',serif;
       font-size:.72rem;letter-spacing:.28em;
-      text-transform:uppercase;color:var(--ink-mid);
-      cursor:pointer;background:none;
+      text-transform:uppercase;
+      cursor:pointer;
+      background:var(--parchment-dark);
+      color:var(--ink);
       border:1px solid var(--parchment-dark);
-      padding:.55rem 1.2rem;
+      padding:.7rem 1.4rem;
       border-radius:2px;
-      transition:color .3s,border-color .3s;
+      line-height:1.8;
+      text-align:center;
+      transition:color .3s,border-color .3s,background .3s;
+    }
+    .btn-dl-trazo:hover{
+      background:var(--parchment);
+      border-color:var(--parchment);
     }
     .btn-dl-trazo:hover{color:var(--ink);border-color:var(--ink-faint);}
 
@@ -555,7 +563,7 @@
           Al terminar, volveré aquí, a dejar grabado para la posteridad su contenido.<br>
           Que Naqsh-Athar vuelva a circular en el mundo.
         </div>
-        <button class="btn-dl-trazo" id="btn-dl-trazo">OBTENER NAQSH-ATHAR PARA TRASLADAR AL PAPEL</button>
+        <button class="btn-dl-trazo" id="btn-dl-trazo">OBTENER NAQSH-ATHAR<br>PARA TRASLADAR AL PAPEL</button>
       </div>
     </div>
 
@@ -616,24 +624,15 @@
         </div>
 
         <div class="dl-group" id="dl-group">
-          <p class="dl-label" style="font-style:italic;font-size:1rem;letter-spacing:.02em;margin-bottom:1.2rem;">Naqsh-Athar ha adquirido nueva forma:</p>
+          <p class="dl-label" style="font-style:italic;font-size:1.05rem;letter-spacing:.02em;margin-bottom:1.2rem;text-transform:none;">Naqsh-Athar ha adquirido nueva forma:</p>
           <button class="btn-portal" id="btn-portal">Generar portal personalizado</button>
-          <div class="dl-item">
-            <p class="dl-desc">Una imagen que podré enviar, adherir o reproducir sobre la superficie donde ejercerá su poder.</p>
-            <button class="dl-btn" id="dl-btn-png">Descargar imagen</button>
-          </div>
+          <button class="dl-btn" id="dl-btn-png">Una imagen que podré enviar, adherir o reproducir sobre la superficie donde ejercerá su poder.</button>
           <p class="dl-desc" style="margin-top:1rem;">Y la réplica de esta experiencia en:</p>
-          <div class="dl-item">
-            <p class="dl-desc">Un vínculo que volverá a despertarme.</p>
-            <button class="dl-btn" id="dl-btn-html">Compartir vínculo</button>
-          </div>
-          <div class="dl-item">
-            <p class="dl-desc">Una estructura lista para trasladarla sobre papel.</p>
-            <button class="dl-btn" id="dl-btn-pdf">Imprimir documento</button>
-          </div>
+          <button class="dl-btn" id="dl-btn-html">Un vínculo que volverá a despertarme.</button>
+          <button class="dl-btn" id="dl-btn-pdf">Una estructura lista para trasladarla sobre papel.</button>
           <p class="status-line" id="act-status"></p>
           <hr class="dl-divider"/>
-          <button class="rtext small on" id="act-btn-restart">Regenerar Naqsh-Athar</button>
+          <button class="rtext on" id="act-btn-restart" style="font-size:1rem;font-weight:bold;letter-spacing:.12em;margin-top:.5rem;">Regenerar Naqsh-Athar</button>
         </div>
       </div>
     </div>
