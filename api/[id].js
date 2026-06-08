@@ -2,11 +2,10 @@ export default async function handler(req, res) {
   const { id } = req.query;
 
   if (!id || !/^\d{12}(\d{3})?$/.test(id)) {
-    return res.status(400).send('ID inválido');
+    return res.redirect(302, 'https://naqsh-athar.link');
   }
 
   try {
-    // Build public blob URL — no random suffix since we save with addRandomSuffix:false
     const storeId = process.env.BLOB_STORE_ID || '';
     const storePrefix = storeId.replace('store_', '').toLowerCase();
     const blobUrl = `https://${storePrefix}.public.blob.vercel-storage.com/${id}.html`;
@@ -14,7 +13,7 @@ export default async function handler(req, res) {
     const response = await fetch(blobUrl);
 
     if (!response.ok) {
-      return res.status(404).send('Naqsh-Athar no encontrado');
+      return res.redirect(302, 'https://naqsh-athar.link');
     }
 
     const html = await response.text();
@@ -24,6 +23,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('[id] error:', err);
-    return res.status(404).send('Naqsh-Athar no encontrado');
+    return res.redirect(302, 'https://naqsh-athar.link');
   }
 }
