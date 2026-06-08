@@ -66,11 +66,16 @@
 
     /* ── NAV BAR — arrows + dots at bottom ── */
     .nav-bar{
-      position:fixed;bottom:1.6rem;left:50%;transform:translateX(-50%);
+      position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);
       z-index:100;
-      display:flex;align-items:center;gap:1.2rem;
+      display:flex;align-items:center;gap:.8rem;
       opacity:0;transition:opacity .35s;
       pointer-events:none;
+      background:rgba(245,240,232,0.15);
+      backdrop-filter:blur(4px);
+      padding:.35rem 1rem;
+      border-radius:20px;
+      white-space:nowrap;
     }
     .nav-bar.visible{opacity:1;pointer-events:auto;}
     .nav-arrow{
@@ -80,16 +85,7 @@
     }
     .nav-arrow svg{display:block;}
     .dots{
-      position:fixed;
-      bottom:1.2rem;
-      left:50%;
-      transform:translateX(-50%);
       display:flex;gap:.5rem;align-items:center;
-      z-index:100;
-      background:rgba(245,240,232,0.15);
-      backdrop-filter:blur(4px);
-      padding:.4rem .8rem;
-      border-radius:20px;
     }
     .dot{
       width:6px;height:6px;border-radius:50%;
@@ -1564,12 +1560,9 @@ dlPdf.addEventListener('click', async function(e) {
     // Left — portada
     const cx_l = HALF/2;
     // Arabic placeholder (SVG will replace later)
-    const arabicPlaceholder = 'نقش  أثر';
-    const arabicW = fontBold.widthOfTextAtSize(arabicPlaceholder, 22);
-    p1.drawText(arabicPlaceholder, {
-      x: cx_l - arabicW/2, y: H - 28*MM,
-      size: 22, font: fontBold, color: INK
-    });
+    // Arabic title placeholder removed — SVG pending
+    // Arabic title — SVG pending, skipped for now
+    // Will be replaced with SVG image when available
 
     // Cover image — 5cm circle
     const ci = CIRCLE_PT;
