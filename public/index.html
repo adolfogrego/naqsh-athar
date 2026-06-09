@@ -13,12 +13,12 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
       --parchment:#f5f0e8;
-      --parchment-mid:#ede5d0;
-      --parchment-dark:#d6c9a8;
+      --parchment-mid:#f5f0e8;
+      --parchment-dark:#f5f0e8;
       --ink:#1a1008;
-      --ink-mid:#5a4a2a;
-      --ink-faint:#9a8a6a;
-      --ink-ghost:#c4b898;
+      --ink-mid:#1a1008;
+      --ink-faint:#1a1008;
+      --ink-ghost:#1a1008;
       --circle-size: clamp(200px, 60vw, 280px);
     }
     html,body{
@@ -89,7 +89,7 @@
     }
     .dot{
       width:6px;height:6px;border-radius:50%;
-      background:var(--parchment-dark);
+      background:rgba(26,16,8,0.35);
       cursor:pointer;transition:background .3s,transform .3s;
       border:none;padding:0;
     }
@@ -152,7 +152,7 @@
     .final-line{
       font-size:1rem;color:var(--ink);font-style:italic;
       margin-top:1.8rem;padding-top:1.4rem;
-      border-top:1px solid var(--parchment-dark);
+      border-top:1px solid rgba(26,16,8,0.2);
     }
 
     /* ── TRAZO SLIDE ── */
@@ -184,9 +184,9 @@
       font-size:.72rem;letter-spacing:.28em;
       text-transform:uppercase;
       cursor:pointer;
-      background:var(--parchment-dark);
-      color:var(--ink);
-      border:1px solid var(--parchment-dark);
+      background:var(--ink);
+      color:var(--parchment);
+      border:1px solid var(--ink);
       padding:.7rem 1.4rem;
       border-radius:8px;
       line-height:1.8;
@@ -195,7 +195,8 @@
     }
     .btn-dl-trazo:hover{
       background:var(--parchment);
-      border-color:var(--parchment);
+      color:var(--ink);
+      border-color:var(--ink);
     }
     .btn-dl-trazo:hover{color:var(--ink);border-color:var(--ink-faint);}
 
@@ -207,8 +208,8 @@
       transition:background 3s ease;
     }
     .activar-intro{
-      font-size:clamp(.78rem,2vw,.92rem);color:var(--ink-mid);
-      line-height:1.65;text-align:center;
+      font-size:clamp(.92rem,2.4vw,1.08rem);color:var(--ink-mid);
+      line-height:1.7;text-align:center;
       max-width:360px;margin:0 auto 1.5rem;
       transition:color .5s;
     }
@@ -229,7 +230,7 @@
     .activar-dark .dl-btn{ background:var(--parchment-dark);color:var(--ink);border-color:var(--parchment-dark); }
     .activar-dark .dl-btn:hover{ background:var(--parchment);color:var(--ink);border-color:var(--parchment); }
     .activar-dark .status-line{ color:var(--parchment-dark); }
-    .activar-dark .act-ring-svg circle[stroke="#9a8a6a"]{ stroke:#c4b898; }
+    .activar-dark .act-ring-svg circle[stroke="#9a8a6a"]{ stroke:var(--parchment); }
 
     /* Trazo as portal */
     /* Trazo always visible as background */
@@ -342,7 +343,7 @@
     .dl-group{
       display:none;flex-direction:column;align-items:center;
       gap:.5rem;margin-top:1.8rem;
-      padding-top:1.6rem;border-top:1px solid var(--parchment-dark);
+      padding-top:1.6rem;border-top:1px solid rgba(26,16,8,0.2);
     }
     .dl-group.on{display:flex;}
     .dl-label{
@@ -587,7 +588,7 @@
         </div>
 
         <div class="activar-intro" id="act-intro" style="margin-top:1.6rem;margin-bottom:0;">
-          En este espacio duplicaré mi trazo personal de Naqsh-Athar.<br>
+          Aquí duplicaré mi trazo personal de Naqsh-Athar.<br>
           Mediante un artificio el papel se convertirá en imagen.<br>
           La imagen será redimensionada a un tamaño que la hará ilegible.<br>
           Se convertirá en un objeto transmisible. Un Talismán.<br>
@@ -604,13 +605,19 @@
 
           <button class="rtext secondary" id="act-btn-adj">Naqsh-Athar se ubica en el centro</button>
           <div class="confirm-row" id="act-confirm-row">
-            <button class="chk" id="act-btn-chk">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                   stroke="#9a8a6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            </button>
-            <span class="chk-label" id="act-lbl-chk">GRABAR Y REDIMENSIONAR</span>
+            <button class="chk" id="act-btn-chk" style="
+              background:var(--parchment-dark);
+              color:var(--ink);
+              border:none;
+              border-radius:8px;
+              font-family:'EB Garamond',serif;
+              font-size:clamp(.8rem,2.2vw,.95rem);
+              letter-spacing:.12em;
+              text-transform:uppercase;
+              padding:.65rem 1.4rem;
+              cursor:pointer;
+              display:flex;align-items:center;justify-content:center;
+            ">GRABAR Y REDIMENSIONAR</button>
           </div>
         </div>
 
@@ -1242,7 +1249,7 @@ dlPdf.addEventListener('click', async function(e) {
     // ── Colors ───────────────────────────────────────────────────────────
     const INK   = rgb(0.102, 0.063, 0.031);   // #1a1008
     const DIM   = rgb(0.604, 0.541, 0.416);   // #9a8a6a
-    const GHOST = rgb(0.839, 0.788, 0.678);   // #d6c9a8
+    const GHOST = rgb(0.839, 0.788, 0.678);   // var(--parchment)
     const WHITE = rgb(1, 1, 1);
 
     // ── Texts ────────────────────────────────────────────────────────────
