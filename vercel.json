@@ -6,13 +6,6 @@
       "destination": "/api/[id]?id=:id"
     }
   ],
-  "redirects": [
-    {
-      "source": "/:path((?!api/).*)",
-      "destination": "/",
-      "statusCode": 302
-    }
-  ],
   "functions": {
     "api/guardar.js": {
       "maxDuration": 30
