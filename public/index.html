@@ -352,17 +352,17 @@
       margin-bottom:.2rem;
     }
     .dl-btn{
-      background:none;
+      background:var(--parchment-dark);
       border:1px solid var(--parchment-dark);
       border-radius:8px;
       font-family:'EB Garamond',serif;
       font-size:.72rem;letter-spacing:.22em;
-      text-transform:uppercase;color:var(--ink-mid);
+      text-transform:uppercase;color:var(--ink);
       cursor:pointer;padding:.5rem 1.1rem;
-      transition:color .3s,border-color .3s;
+      transition:background .3s,color .3s,border-color .3s;
       width:100%;max-width:280px;
     }
-    .dl-btn:hover{color:var(--ink);border-color:var(--ink-faint);}
+    .dl-btn:hover{background:var(--parchment);color:var(--ink);border-color:var(--parchment);}
 
     .status-line{
       margin-top:.7rem;font-size:.72rem;
@@ -1707,6 +1707,15 @@ if(offlineModalClose) {
     if(m) m.classList.remove('on');
   });
 }
+
+dlPng.addEventListener('click', function(e) {
+  e.stopPropagation();
+  if(!window._styledQRUrl) return;
+  const a = document.createElement('a');
+  a.href = window._styledQRUrl;
+  a.download = 'naqsh-athar.png';
+  a.click();
+});
 
 dlHtml.addEventListener('click', async function(e) {
   e.stopPropagation();
