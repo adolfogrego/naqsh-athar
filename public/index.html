@@ -1453,47 +1453,84 @@ dlPdf.addEventListener('click', async function(e) {
     const fonts = { regular: fontReg, bold: fontBold, italic: fontItal };
 
     // Convert any image to clean PNG via canvas before embedding
-    async function toPngB64(src) {
-      return new Promise((resolve, reject) => {
+    // ── Parse origin from saved HTML comment ─────────────────────────────
+    // When opened from a timestamped URL, <head> contains:
+    // <!-- NAQSH_ORIGIN: https://naqsh-athar.link/DDMMYYHHMMSS -->
+    const originMatch = document.head.innerHTML.match(/NAQSH_ORIGIN:\s*(https?:\/\/\S+)\s*-->/);
+    const originUrl = originMatch ? originMatch[1].trim() : null;
+
+    // ── User URL for right side and trazo corners ─────────────────────────
+    const userUrl = window._portalUrl || 'https://naqsh-athar.link';
+
+    // ── Helper: load any src → data URL, with null fallback ──────────────
+    function srcToDataUrl(src) {
+      return new Promise(resolve => {
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         img.onload = () => {
           const c2 = document.createElement('canvas');
-          c2.width = img.naturalWidth || img.width;
-          c2.height = img.naturalHeight || img.height;
+          c2.width = img.naturalWidth || img.width || 400;
+          c2.height = img.naturalHeight || img.height || 400;
           c2.getContext('2d').drawImage(img, 0, 0);
-          resolve(c2.toDataURL('image/png').split(',')[1]);
+          resolve(c2.toDataURL('image/png'));
         };
-        img.onerror = reject;
+        img.onerror = () => resolve(null);
         img.src = src;
       });
     }
 
-    const portadaB64clean = await toPngB64(document.getElementById('portada-circle').src);
-    const portadaImg = await embedB64(doc, portadaB64clean, 'png');
+    // ── Helper: Promise wrapper for generateStyledQR ──────────────────────
+    function makeQR(url, photoDataUrl, mode) {
+      return new Promise(resolve => generateStyledQR(url, photoDataUrl, resolve, mode));
+    }
 
-    // Crop user photo to circle before embedding
-    const userCircleB64 = await new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const sz = Math.min(img.width, img.height);
-        const cv2 = document.createElement('canvas');
-        cv2.width = cv2.height = sz;
-        const c2 = cv2.getContext('2d');
-        c2.beginPath();
-        c2.arc(sz/2, sz/2, sz/2, 0, Math.PI*2);
-        c2.clip();
-        c2.drawImage(img,
-          (img.width-sz)/2, (img.height-sz)/2, sz, sz,
-          0, 0, sz, sz);
-        resolve(cv2.toDataURL('image/png').split(',')[1]);
-      };
-      img.src = croppedJpg;
-    });
-    const userImg = await embedB64(doc, userCircleB64, 'png');
+    // ── Parchment fallback circle ─────────────────────────────────────────
+    function parchmentCircle() {
+      const fc = document.createElement('canvas');
+      fc.width = fc.height = 400;
+      const fctx = fc.getContext('2d');
+      fctx.fillStyle = '#f5f0e8';
+      fctx.beginPath(); fctx.arc(200,200,200,0,Math.PI*2); fctx.fill();
+      return fc.toDataURL('image/png');
+    }
 
-    // QR PNG for corners
-    const qrB64 = makeQRpng('https://naqsh-athar.link', 200);
-    const qrImg = await embedB64(doc, qrB64, 'png');
+    // ── Prepare left-side photo ───────────────────────────────────────────
+    // With origin: portada-circle.src = previous user's photo
+    // Without origin: trazo SVG as background
+    let leftPhotoDataUrl = null;
+    const portadaEl = document.getElementById('portada-circle');
+    const portadaSrc = portadaEl ? portadaEl.src : null;
+
+    if(originUrl && portadaSrc && portadaSrc.startsWith('data:image/jpeg')) {
+      leftPhotoDataUrl = await srcToDataUrl(portadaSrc);
+    }
+    if(!leftPhotoDataUrl) {
+      // No origin (or portada-circle is still the original trazo SVG)
+      const trazoBgEl = document.getElementById('act-trazo-bg');
+      if(trazoBgEl && trazoBgEl.src) {
+        leftPhotoDataUrl = await srcToDataUrl(trazoBgEl.src);
+      }
+    }
+    if(!leftPhotoDataUrl) leftPhotoDataUrl = parchmentCircle();
+
+    // ── Generate QR images ────────────────────────────────────────────────
+    const leftUrl = originUrl || 'https://naqsh-athar.link';
+    const [leftQrDataUrl, rightQrDataUrl] = await Promise.all([
+      makeQR(leftUrl,  leftPhotoDataUrl, 'cover'),
+      makeQR(userUrl, croppedJpg,        'cover'),
+    ]);
+
+    // ── Embed helper (data URL → PDFLib image) ────────────────────────────
+    async function embedDataUrl(doc, dataUrl) {
+      const b64 = dataUrl.split(',')[1];
+      const bin = atob(b64);
+      const buf = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+      return doc.embedPng(buf);
+    }
+
+    const leftQrImg  = await embedDataUrl(doc, leftQrDataUrl);
+    const rightQrImg = await embedDataUrl(doc, rightQrDataUrl);
 
     // Trazo PNG — render SVG to canvas first
     const trazoB64Svg = document.getElementById('act-trazo-bg').src.split(',')[1];
@@ -1512,27 +1549,21 @@ dlPdf.addEventListener('click', async function(e) {
       };
       img.src = svgUrl;
     });
-    const trazoImgEmbed = await embedB64(doc, trazoImg64, 'png');
 
-    // ── PAGE 1: Portada | Usuario ─────────────────────────────────────────
+    // ── PAGE 1: Left (origin) | Right (current user) ──────────────────────
     const p1 = doc.addPage([W, H]);
     drawWhitePage(p1);
 
-    // Left — portada
-    const cx_l = HALF/2;
-    // Arabic placeholder (SVG will replace later)
-    // Arabic title placeholder removed — SVG pending
-    // Arabic title — SVG pending, skipped for now
-    // Will be replaced with SVG image when available
-
-    // Cover image — 5cm circle
     const ci = CIRCLE_PT;
-    p1.drawImage(portadaImg, {
+    const cx_l = HALF/2;
+    const cx_r = HALF + HALF/2;
+
+    // Left — origin QR (previous user photo or trazo with cover-mode QR)
+    p1.drawImage(leftQrImg, {
       x: cx_l - ci/2, y: H/2 - ci/2,
       width: ci, height: ci
     });
 
-    // Slogan
     const slogan = 'el trazo que deja huella en la realidad';
     const sw = fontItal.widthOfTextAtSize(slogan, 7);
     p1.drawText(slogan, {
@@ -1540,8 +1571,7 @@ dlPdf.addEventListener('click', async function(e) {
       size: 7, font: fontItal, color: DIM
     });
 
-    // URL
-    const urlStr = 'naqsh-athar.link';
+    const urlStr = originUrl ? originUrl.replace('https://','') : 'naqsh-athar.link';
     const uw = fontReg.widthOfTextAtSize(urlStr, 6.5);
     p1.drawText(urlStr, {
       x: cx_l - uw/2, y: 9*MM,
@@ -1550,11 +1580,17 @@ dlPdf.addEventListener('click', async function(e) {
 
     drawFold(p1);
 
-    // Right — user image
-    const cx_r = HALF + HALF/2;
-    p1.drawImage(userImg, {
+    // Right — current user QR
+    p1.drawImage(rightQrImg, {
       x: cx_r - ci/2, y: H/2 - ci/2,
       width: ci, height: ci
+    });
+
+    const urStr2 = userUrl.replace('https://','');
+    const uw2 = fontReg.widthOfTextAtSize(urStr2, 6.5);
+    p1.drawText(urStr2, {
+      x: cx_r - uw2/2, y: 9*MM,
+      size: 6.5, font: fontReg, color: DIM
     });
 
     // ── PAGE 2: I + IV ────────────────────────────────────────────────────
@@ -1641,14 +1677,9 @@ dlPdf.addEventListener('click', async function(e) {
         }
         ctx4.restore();
 
-        // QR corners
+        // QR corners — current user photo, print mode (scannable)
         const qrUrl2 = window._portalUrl || 'https://naqsh-athar.link';
-        const phC = document.createElement('canvas');
-        phC.width = phC.height = 200;
-        const phCtx = phC.getContext('2d');
-        phCtx.fillStyle = '#f5f0e8';
-        phCtx.beginPath(); phCtx.arc(100,100,100,0,Math.PI*2); phCtx.fill();
-        generateStyledQR(qrUrl2, phC.toDataURL('image/png'), function(qrUrl3) {
+        generateStyledQR(qrUrl2, croppedJpg, function(qrUrl3) {
           const qrI = new Image();
           qrI.onload = function() {
             const corners2 = [
@@ -1931,8 +1962,10 @@ function showOfflineResult() {
 // Uses qrcode-generator lib for matrix access, draws dots manually
 function generateStyledQR(url, photoDataUrl, callback, mode) {
   // mode: 'screen' = text visible, dots faint (for display)
-  //       'print'  = dots dark, text faint (for download/print) [default]
+  //       'cover'  = text visible, dots very faint (for PDF cover — visually readable)
+  //       'print'  = dots dark and scannable, text visible (for PDF corners) [default]
   const isScreen = (mode === 'screen');
+  const isCover  = (mode === 'cover');
   function doRender(qr) {
     const SIZE = 400;
     const c = document.createElement('canvas');
@@ -1952,12 +1985,12 @@ function generateStyledQR(url, photoDataUrl, callback, mode) {
       ctx.drawImage(photoImg,0,0,SIZE,SIZE);
       ctx.restore();
 
-      // Parchment overlay — heavier in screen mode so text reads better
+      // Parchment overlay
       ctx.save();
       ctx.beginPath();
       ctx.arc(R,R,R,0,Math.PI*2);
       ctx.clip();
-      ctx.fillStyle = isScreen ? 'rgba(245,240,232,0.72)' : 'rgba(245,240,232,0.50)';
+      ctx.fillStyle = (isScreen || isCover) ? 'rgba(245,240,232,0.72)' : 'rgba(245,240,232,0.50)';
       ctx.fill();
       ctx.restore();
 
@@ -1967,9 +2000,9 @@ function generateStyledQR(url, photoDataUrl, callback, mode) {
       const cell = QS / n;
       const off = (SIZE - QS) / 2;
       const dot_r = cell * 0.38;
-      // Screen: dots nearly invisible; Print: dots dark and scannable
-      const INK = isScreen ? 'rgba(26,16,8,0.12)' : 'rgba(26,16,8,0.85)';
-      const WHITE = 'rgba(0,0,0,0)';  // transparent — shows photo behind
+      const dotOpacity = isScreen ? 0.12 : isCover ? 0.20 : 0.85;
+      const INK = `rgba(26,16,8,${dotOpacity})`;
+      const WHITE = 'rgba(0,0,0,0)';
 
       function inFinder(r,c) {
         return (r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7);
@@ -2019,24 +2052,20 @@ function generateStyledQR(url, photoDataUrl, callback, mode) {
       const finderC = document.createElement('canvas');
       finderC.width = finderC.height = SIZE;
       const fctx = finderC.getContext('2d');
-      const finderInk = isScreen ? 'rgba(26,16,8,0.12)' : INK;
+      const finderInk = INK;
       for(const [fx,fy] of finders){
         const ro=cell*3.5, rg=cell*2.5, ri=cell*1.5;
         if(Math.hypot(fx-R,fy-R)+ro>r_inner+ro*0.3) continue;
-        // Outer ring
         fctx.beginPath(); fctx.arc(fx,fy,ro,0,Math.PI*2);
         fctx.fillStyle=finderInk; fctx.fill();
-        // Gap — erase on this canvas only (photo shows through from main canvas)
         fctx.save();
         fctx.globalCompositeOperation='destination-out';
         fctx.beginPath(); fctx.arc(fx,fy,rg,0,Math.PI*2);
         fctx.fillStyle='rgba(0,0,0,1)'; fctx.fill();
         fctx.restore();
-        // Inner dot
         fctx.beginPath(); fctx.arc(fx,fy,ri,0,Math.PI*2);
         fctx.fillStyle=finderInk; fctx.fill();
       }
-      // Composite finder layer on top of photo+dots
       ctx.drawImage(finderC,0,0);
 
       // Outer border
@@ -2046,12 +2075,11 @@ function generateStyledQR(url, photoDataUrl, callback, mode) {
       ctx.lineWidth=BW;
       ctx.stroke();
 
-      // Arabic text centered — نقش أثر
-      // Screen: text prominent; Print: text visible but not competing with dots
+      // Arabic text — always visible; 'print' slightly less prominent
       ctx.save();
       ctx.font = 'bold 52px Amiri, serif';
       ctx.fillStyle = '#1a1008';
-      ctx.globalAlpha = isScreen ? 0.85 : 0.72;
+      ctx.globalAlpha = (isScreen || isCover) ? 0.85 : 0.72;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('\u0646\u0642\u0634 \u0623\u062b\u0631', R, R);
