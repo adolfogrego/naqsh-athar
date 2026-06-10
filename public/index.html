@@ -1195,20 +1195,47 @@ function showPortalModal(onConfirm){
     portalModal.classList.remove('visible');
     setTimeout(()=>{ portalModal.classList.remove('on'); onConfirm(); }, 300);
   };
-  // Click outside circle — close without action, stop bubbling
+  // Click/tap outside circle — close without action, stop bubbling
   portalModal.onclick = function(e){
     if(e.target === portalModal){
       e.stopPropagation();
       hidePortalModal();
     }
   };
+  // Mobile: also handle touchend on backdrop (prevents ghost click issues)
+  portalModal.ontouchend = function(e){
+    if(e.target === portalModal){
+      e.stopPropagation();
+      e.preventDefault();
+      hidePortalModal();
+    }
+  };
 }
 
-// Single click handler on act-wrap — catches tap on trazo, portal, and vp
-document.getElementById('act-wrap').addEventListener('click', e=>{
-  e.stopPropagation();
-  if(mode==='empty' && !window._modalOpen) showPortalModal(()=>openCam());
-});
+// Tap/click on act-wrap — catches tap on trazo, portal, and vp
+// Use touchend for mobile responsiveness; fallback click for desktop
+(function(){
+  const wrap = document.getElementById('act-wrap');
+  let _touchMoved = false;
+  wrap.addEventListener('touchstart', function(){ _touchMoved = false; }, {passive:true});
+  wrap.addEventListener('touchmove', function(){ _touchMoved = true; }, {passive:true});
+  wrap.addEventListener('touchend', function(e){
+    if(_touchMoved) return;            // was a swipe, not a tap
+    if(window._modalOpen) return;
+    if(mode === 'empty'){
+      e.stopPropagation();
+      showPortalModal(()=>openCam());
+    }
+  });
+  wrap.addEventListener('click', function(e){
+    // Desktop fallback — mobile fires touchend first so this is a no-op there
+    if(window._modalOpen) return;
+    if(mode === 'empty'){
+      e.stopPropagation();
+      showPortalModal(()=>openCam());
+    }
+  });
+})();
 btnChk.addEventListener('click', e=>{ e.stopPropagation(); confirmCrop(); });
 lblChk.addEventListener('click', e=>{ e.stopPropagation(); confirmCrop(); });
 btnRestart.addEventListener('click', e=>{ e.stopPropagation(); setMode('empty'); });
@@ -1930,7 +1957,6 @@ dlPdf.addEventListener('click', async function(e) {
     pageB.drawImage(trazoEmbed, {x:0, y:0, width:W, height:H});
 
     // ── Save ──────────────────────────────────────────────────────────────
-    const bytes = await doc.save();    // ── Save ──────────────────────────────────────────────────────────────
     const bytes = await doc.save();
     const blob = new Blob([bytes], {type:'application/pdf'});
     const url2 = URL.createObjectURL(blob);
