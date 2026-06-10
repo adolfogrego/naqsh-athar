@@ -1558,8 +1558,8 @@ dlPdf.addEventListener('click', async function(e) {
     const cx_l = HALF/2;
     const cx_r = HALF + HALF/2;
 
-    // Left — origin QR (previous user photo or trazo with cover-mode QR)
-    p1.drawImage(leftQrImg, {
+    // Left — current user QR
+    p1.drawImage(rightQrImg, {
       x: cx_l - ci/2, y: H/2 - ci/2,
       width: ci, height: ci
     });
@@ -1571,7 +1571,7 @@ dlPdf.addEventListener('click', async function(e) {
       size: 7, font: fontItal, color: DIM
     });
 
-    const urlStr = originUrl ? originUrl.replace('https://','') : 'naqsh-athar.link';
+    const urlStr = userUrl.replace('https://','');
     const uw = fontReg.widthOfTextAtSize(urlStr, 6.5);
     p1.drawText(urlStr, {
       x: cx_l - uw/2, y: 9*MM,
@@ -1580,13 +1580,13 @@ dlPdf.addEventListener('click', async function(e) {
 
     drawFold(p1);
 
-    // Right — current user QR
-    p1.drawImage(rightQrImg, {
+    // Right — origin QR (previous user or original trazo)
+    p1.drawImage(leftQrImg, {
       x: cx_r - ci/2, y: H/2 - ci/2,
       width: ci, height: ci
     });
 
-    const urStr2 = userUrl.replace('https://','');
+    const urStr2 = originUrl ? originUrl.replace('https://','') : 'naqsh-athar.link';
     const uw2 = fontReg.widthOfTextAtSize(urStr2, 6.5);
     p1.drawText(urStr2, {
       x: cx_r - uw2/2, y: 9*MM,
