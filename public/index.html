@@ -130,6 +130,10 @@
       margin:1.4rem auto 0;
       perspective:800px;
       cursor:pointer;
+      outline:none;
+      -webkit-tap-highlight-color:transparent;
+      user-select:none;
+      -webkit-user-select:none;
     }
     .portada-flip-inner{
       width:100%;height:100%;
@@ -1629,12 +1633,39 @@ dlPdf.addEventListener('click', async function(e) {
       return lines;
     }
 
+    // ── Canvas text wrap helper ──────────────────────────────────────────
+    function wrapTextCanvas(ctx, text, maxWidth, fontSize, isItalic) {
+      ctx.font = isItalic ? `italic ${fontSize}px "Times New Roman", serif`
+                          : `${fontSize}px "Times New Roman", serif`;
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      for(const w of words) {
+        const test = (line ? line + ' ' : '') + w;
+        if(ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = test;
+        }
+      }
+      if(line) lines.push(line);
+      return lines;
+    }
+
     // ── Canvas-based text panel renderer ─────────────────────────────────
-    // Renders a text panel to a canvas (avoids pdf-lib coordinate transform issues)
-    // Returns PNG data URL at 2× scale for quality
+    // fold_side: 'bottom' = fold is at bottom of canvas (top-row panels, placed at y=PH)
+    //            'top'    = fold is at top of canvas (bottom-row panels, placed at y=0)
+    // For top-row (rotate180=true): canvas bottom = fold → fold_side='bottom'
+    // For bottom-row (rotate180=false): canvas top = fold (PDF y=PH is top) → fold_side='top'
+    // After rotate180 flip: bottom-row canvas gets flipped so its top becomes the fold side.
     const SCALE = 2;  // px per pt
 
-    function renderTextToCanvas(slideKey, panelW, panelH, isSpread) {
+    // Unified title offset from fold edge (in pt, before SCALE):
+    // All titles appear at this distance from the fold line.
+    const TITLE_FROM_FOLD_PT = 8; // mm — gap between fold and title baseline
+
+    function renderTextToCanvas(slideKey, panelW, panelH, isSpread, foldAtBottom) {
       const S = SCALE;
       const cv = document.createElement('canvas');
       cv.width  = Math.round(panelW * S);
@@ -1643,117 +1674,119 @@ dlPdf.addEventListener('click', async function(e) {
       ctx.clearRect(0, 0, cv.width, cv.height);
 
       const slide      = SLIDES[slideKey];
+      const isIV       = (slideKey === 'I' || slideKey === 'IV');
+      // Spreads I & IV: larger font, italic body; single panels II & III: normal
       const TITLE_SIZE = (isSpread ? 9 : 8) * S;
-      const BODY_SIZE  = (isSpread ? 7 : 6.5) * S;
+      const BODY_SIZE  = isIV ? 8 * S : (isSpread ? 7 : 6.5) * S;
       const LINE_H     = BODY_SIZE * 1.65;
-      const mar        = MAR * S;
+      const FOLD_GAP   = TITLE_FROM_FOLD_PT * MM * S;  // gap from fold to title
+      const OUTER_MAR  = 12 * MM * S;                   // air at outer (non-fold) edge
+      const mar        = (isIV ? MAR * 0.75 : MAR) * S; // slightly tighter margin for I/IV
       const colW       = panelW * S - mar * 2;
-      const MAX_CHARS  = Math.floor(colW / (BODY_SIZE * 0.46));
 
-      let y = panelH * S - mar;
-
-      ctx.fillStyle = '#1a1008';
-      ctx.font = `bold ${TITLE_SIZE}px "Times New Roman", serif`;
-      ctx.fillText(slide.title, mar, y);
-      y -= 4 * MM * S;
-
-      ctx.strokeStyle = '#9a8a6a';
-      ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.moveTo(mar, y); ctx.lineTo(mar + colW, y); ctx.stroke();
-      y -= 4 * MM * S;
-
-      function drawLine(text, bold2, italic2, cx) {
-        if(cx) {
-          ctx.font = `bold ${BODY_SIZE}px "Times New Roman", serif`;
-          const tw = ctx.measureText(text).width;
-          ctx.fillText(text, mar + (colW - tw)/2, y);
-        } else if(bold2) {
-          ctx.font = `bold ${BODY_SIZE}px "Times New Roman", serif`;
-          ctx.fillText(text, mar, y);
-        } else if(italic2) {
-          ctx.font = `italic ${BODY_SIZE}px "Times New Roman", serif`;
-          ctx.fillText(text, mar, y);
-        } else {
-          ctx.font = `${BODY_SIZE}px "Times New Roman", serif`;
-          ctx.fillText(text, mar, y);
-        }
-        y -= LINE_H;
-      }
-
-      function wrapAndDraw(text, bold2, italic2, cx) {
-        if(bold2) {
-          ctx.font = `bold ${BODY_SIZE}px "Times New Roman", serif`;
-        } else if(italic2) {
-          ctx.font = `italic ${BODY_SIZE}px "Times New Roman", serif`;
-        } else {
-          ctx.font = `${BODY_SIZE}px "Times New Roman", serif`;
-        }
-        const words = text.split(' ');
-        let line = '';
-        for(const w of words) {
-          const test = (line ? line + ' ' : '') + w;
-          if(ctx.measureText(test).width > colW && line) {
-            drawLine(line, bold2, italic2, cx);
-            line = w;
-          } else {
-            line = test;
-          }
-        }
-        if(line) drawLine(line, bold2, italic2, cx);
-      }
+      // Collect all rendered lines (two-pass: measure then draw)
+      const lines = [];
+      lines.push({ isTitle: true, text: slide.title });
+      lines.push({ isDivider: true });
 
       for(const para of slide.paras) {
-        if(y < mar + 3 * MM * S) break;
         if(typeof para === 'string') {
-          ctx.fillStyle = '#1a1008';
-          wrapAndDraw(para, false, false, false);
+          const wrapped = wrapTextCanvas(ctx, para, colW, BODY_SIZE, isIV);
+          for(const l of wrapped) lines.push({ text: l, italic: isIV });
+          lines.push({ isGap: true });
         } else if(para.bold) {
-          ctx.fillStyle = '#1a1008';
-          // Draw bold word first, then rest on same line
-          ctx.font = `bold ${BODY_SIZE}px "Times New Roman", serif`;
-          const bw = ctx.measureText(para.bold).width;
-          ctx.fillText(para.bold, mar, y);
-          ctx.font = `${BODY_SIZE}px "Times New Roman", serif`;
-          // Wrap the rest starting from after bold word
-          const restWords = para.rest.trim().split(' ');
-          let line = para.rest.startsWith(' ') ? ' ' : '';
-          let firstLine = true;
-          for(const w of restWords) {
-            const test = line + w;
-            const testW = (firstLine ? bw : 0) + ctx.measureText(test).width;
-            if(testW > colW && line.trim()) {
-              if(firstLine) {
-                ctx.fillText(line, mar + bw, y);
-                firstLine = false;
-              } else {
-                ctx.fillText(line.trim(), mar, y);
-              }
-              y -= LINE_H;
-              line = w + ' ';
-            } else {
-              line = line + w + ' ';
-            }
-          }
-          if(line.trim()) {
-            if(firstLine) ctx.fillText(line.trim(), mar + bw, y);
-            else ctx.fillText(line.trim(), mar, y);
-            y -= LINE_H;
-          }
+          const wrapped = wrapTextCanvas(ctx, para.bold + para.rest, colW, BODY_SIZE, false);
+          for(let i=0; i<wrapped.length; i++)
+            lines.push({ text: wrapped[i], boldWord: i===0 ? para.bold : null });
+          lines.push({ isGap: true });
         } else if(para.center) {
-          ctx.fillStyle = '#1a1008';
-          wrapAndDraw(para.center, true, false, true);
+          const wrapped = wrapTextCanvas(ctx, para.center, colW, BODY_SIZE, false);
+          for(const l of wrapped) lines.push({ text: l, center: true, boldText: true });
+          lines.push({ isGap: true });
         } else if(para.italic) {
-          ctx.fillStyle = '#5a4a2a';
-          wrapAndDraw(para.italic, false, true, false);
+          const wrapped = wrapTextCanvas(ctx, para.italic, colW, BODY_SIZE, true);
+          for(const l of wrapped) lines.push({ text: l, italic: true });
+          lines.push({ isGap: true });
         }
-        y -= 2.5 * MM * S;
+      }
+
+      // Measure total content height
+      let totalH = 0;
+      for(const ln of lines) {
+        if(ln.isTitle)        totalH += TITLE_SIZE * 1.4 + 2 * MM * S;
+        else if(ln.isDivider) totalH += 5 * MM * S;
+        else if(ln.isGap)     totalH += 2.5 * MM * S;
+        else                  totalH += LINE_H;
+      }
+
+      // Anchor: title starts at FOLD_GAP from the fold edge
+      // foldAtBottom=true  → fold is at cv.height, title starts near bottom going up
+      //   → y of title top = cv.height - FOLD_GAP - totalH
+      // foldAtBottom=false → fold is at y=0 (top of canvas in PDF coords),
+      //   but canvas draws top-down, so fold edge = y=0 in canvas
+      //   → y of title top = FOLD_GAP
+      let y;
+      if(foldAtBottom) {
+        // Fold at canvas bottom: anchor title near bottom, text grows upward from fold
+        // Title nearest fold = highest canvas y = cv.height - FOLD_GAP - totalH
+        y = cv.height - FOLD_GAP - totalH;
+        if(y < OUTER_MAR) y = OUTER_MAR;
+      } else {
+        // Fold at canvas top (bottom-row panels): title nearest fold = small canvas y
+        y = FOLD_GAP;
+        // No upward clamp — let content flow down toward outer edge naturally
+      }
+
+      // Draw title
+      ctx.fillStyle = '#1a1008';
+      ctx.font = `bold ${TITLE_SIZE}px "Times New Roman", serif`;
+      ctx.fillText(slide.title, mar, y + TITLE_SIZE);
+      y += TITLE_SIZE * 1.4 + 2 * MM * S;
+
+      // Divider line
+      ctx.strokeStyle = '#9a8a6a';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.moveTo(mar, y); ctx.lineTo(mar + colW, y); ctx.stroke();
+      y += 5 * MM * S;
+
+      // Draw paragraphs
+      for(const ln of lines.slice(2)) {
+        if(ln.isGap) { y += 2.5 * MM * S; continue; }
+        const bottomLimit = foldAtBottom ? cv.height - 4*MM*S : cv.height - OUTER_MAR;
+        if(y + BODY_SIZE > bottomLimit) break;
+        if(ln.boldWord) {
+          ctx.fillStyle = '#1a1008';
+          ctx.font = `bold ${BODY_SIZE}px "Times New Roman", serif`;
+          const bw = ctx.measureText(ln.boldWord).width;
+          ctx.fillText(ln.boldWord, mar, y + BODY_SIZE);
+          ctx.font = `${BODY_SIZE}px "Times New Roman", serif`;
+          const rest = ln.text.slice(ln.boldWord.length);
+          if(rest) ctx.fillText(rest, mar + bw, y + BODY_SIZE);
+        } else if(ln.center) {
+          ctx.fillStyle = '#1a1008';
+          ctx.font = `bold ${BODY_SIZE}px "Times New Roman", serif`;
+          const tw = ctx.measureText(ln.text).width;
+          ctx.fillText(ln.text, mar + (colW - tw)/2, y + BODY_SIZE);
+        } else if(ln.italic) {
+          ctx.fillStyle = '#1a1008';
+          ctx.font = `italic ${BODY_SIZE}px "Times New Roman", serif`;
+          ctx.fillText(ln.text, mar, y + BODY_SIZE);
+        } else {
+          ctx.fillStyle = '#1a1008';
+          ctx.font = `${BODY_SIZE}px "Times New Roman", serif`;
+          ctx.fillText(ln.text, mar, y + BODY_SIZE);
+        }
+        y += LINE_H;
       }
       return cv;
     }
 
     // Embed a canvas as PNG into pdf-lib, rotated 180° if needed
+    // rotate180=true  → top-row: canvas rotated so canvas-TOP → fold side → foldAtBottom=false
+    // rotate180=false → bottom-row: canvas-TOP is fold side (panel at y=0, fold at y=PH above) → foldAtBottom=false
+    // Both cases: anchor title near canvas TOP (small y), which after placement/rotation ends up at fold
     async function embedPanel(doc, slideKey, panelW, panelH, isSpread, rotate180) {
-      const cv = renderTextToCanvas(slideKey, panelW, panelH, isSpread);
+      const cv = renderTextToCanvas(slideKey, panelW, panelH, isSpread, false);
       if(rotate180) {
         // Rotate 180° on a new canvas
         const rc = document.createElement('canvas');
@@ -1823,7 +1856,7 @@ dlPdf.addEventListener('click', async function(e) {
         octx.beginPath(); octx.arc(S/2,S/2,S/2,0,Math.PI*2); octx.clip();
         octx.drawImage(img, 0, 0, S, S);
         octx.restore();
-        applyRadialFade(oc, 0.90);
+        applyRadialFade(oc, 0.80);
         return oc.toDataURL('image/png');
       }
       // Fallback: Orante PNG
@@ -1843,14 +1876,17 @@ dlPdf.addEventListener('click', async function(e) {
     pageA.drawRectangle({x:0,y:0,width:W,height:H,color:WHITE});
 
     // ── Fold/cut guide lines ──────────────────────────────────────────────
-    // Vertical fold lines (light gray dashes)
-    for(const x of [PW, 2*PW, 3*PW]) {
-      pageA.drawLine({ start:{x,y:0}, end:{x,y:H}, thickness:0.25, color:GHOST });
+    // Vertical fold marks: 2cm tick at top and bottom edge of each fold
+    const MARK = 28.35; // 1cm in pt
+    for(const fx of [PW, 2*PW, 3*PW]) {
+      // tick at bottom edge
+      pageA.drawLine({ start:{x:fx, y:0},     end:{x:fx, y:MARK},   thickness:0.25, color:GHOST });
+      // tick at top edge
+      pageA.drawLine({ start:{x:fx, y:H-MARK},end:{x:fx, y:H},      thickness:0.25, color:GHOST });
     }
-    // Horizontal fold line (full width, light)
+    // Horizontal fold line full width (light) — the main fold reference
     pageA.drawLine({ start:{x:0,y:PH}, end:{x:W,y:PH}, thickness:0.25, color:GHOST });
-    // Cut line — dashed between panels 2 and 3 (x=PW to x=3*PW, y=PH)
-    // We simulate dashes by drawing short segments
+    // Cut line — dashed between x=PW and x=3*PW on the horizontal fold
     for(let x = PW; x < 3*PW; x += 6) {
       pageA.drawLine({
         start:{x, y:PH}, end:{x:Math.min(x+3, 3*PW), y:PH},
@@ -1893,6 +1929,33 @@ dlPdf.addEventListener('click', async function(e) {
       size:6, font:fontReg, color:DIM
     });
 
+    // Arabic text نقش أثر — in the space BETWEEN the image top edge and the fold line
+    // Front Cover: fold at y=PH (top), image top at y = (PH-imgSz)/2 + imgSz
+    // Space between image top and fold ≈ 36pt — place text centered in that gap
+    {
+      const imgSzFC = Math.min(PW, PH) * 0.76;
+      const imgTopY = (PH - imgSzFC)/2 + imgSzFC; // top edge of image in PDF coords
+      const gapCenter = imgTopY + (PH - imgTopY) / 2; // vertical center of gap
+      const arabicText = 'نقش أثر';
+      try {
+        const arabicFontBytes = await fetch('https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUpvrIw74NL.woff2')
+          .then(r=>r.arrayBuffer()).catch(()=>null);
+        if(arabicFontBytes) {
+          const arabicFont = await doc.embedFont(arabicFontBytes, {subset:false});
+          const aSize = 13;
+          const aW = arabicFont.widthOfTextAtSize(arabicText, aSize);
+          // y = gapCenter positions baseline in the middle of the gap
+          pageA.drawText(arabicText, {
+            x: 3*PW + (PW - aW)/2,
+            y: gapCenter - aSize/2,
+            size: aSize, font: arabicFont, color: INK
+          });
+        }
+      } catch(e) {
+        // Arabic font unavailable — skip silently
+      }
+    }
+
     // ── Top row — rotated 180° ────────────────────────────────────────────
     // Page 4 (x=0, y=PH): Section III — rotated
     const panelIII = await embedPanel(doc, 'III', PW, PH, false, true);
@@ -1921,7 +1984,7 @@ dlPdf.addEventListener('click', async function(e) {
 
       const svgI = new Image();
       svgI.onload = function() {
-        // Trazo centered, square, with 8% margin each side
+        // Trazo centered, square with margin
         const margin = Math.min(PX_W, PX_H) * 0.08;
         const sz = Math.min(PX_W, PX_H) - margin * 2;
         const tx = (PX_W - sz) / 2;
@@ -1931,7 +1994,52 @@ dlPdf.addEventListener('click', async function(e) {
         ctx.drawImage(svgI, tx, ty, sz, sz);
         ctx.restore();
 
-        // QR in 4 corners — user QR, print mode
+        // ── Header texts (above trazo) ────────────────────────────────
+        const hLines = [
+          {t:'Naqsh-Athar es dos que a la vez son uno.', b:true,  s:28},
+          {t:'Pedir-Obtener: La fuerza de atracción.',   b:false, s:22},
+          {t:'En el círculo interior se inscribe la súplica o se invoca', b:false, s:18},
+          {t:'la manifestación de la voluntad en el mundo físico:', b:false, s:18},
+          {t:'influir sobre la realidad. Lo que se espera recibir.', b:false, s:18},
+          {t:'El deseo, la necesidad, la ausencia que busca ser llenada.', b:false, s:18},
+        ];
+        const hBlockH = hLines.reduce((a,l) => a + l.s*1.55, 0);
+        let hy = (ty - hBlockH) / 2 + hLines[0].s;
+        if(hy < 30) hy = 30;
+        ctx.textAlign = 'center';
+        for(const l of hLines) {
+          ctx.font = (l.b ? 'bold ' : '') + l.s + 'px Georgia,serif';
+          ctx.fillStyle = l.b ? '#1a1008' : '#5a4a2a';
+          ctx.fillText(l.t, PX_W/2, hy);
+          hy += l.s * 1.55;
+        }
+
+        // ── Footer texts (below trazo, rotated 180°) ──────────────────
+        const fLines = [
+          {t:'Naqsh-Athar son uno que a la vez son dos.',  b:true,  s:28},
+          {t:'Soltar-Dar: La fuerza de repulsión.',         b:false, s:22},
+          {t:'En el círculo exterior se inscribe la acción,', b:false, s:18},
+          {t:'el acto de ofrenda o sacrificio que se llevará a cabo', b:false, s:18},
+          {t:'a fin de que la voluntad expresada en el círculo', b:false, s:18},
+          {t:'interior se manifieste. Es algo que se deja ir. Un exceso, un obsequio.', b:false, s:18},
+        ];
+        const fBlockH = fLines.reduce((a,l) => a + l.s*1.55, 0);
+        const botSpace = PX_H - (ty + sz);
+        const pivotY = ty + sz + botSpace/2 + fBlockH/2;
+        ctx.save();
+        ctx.translate(PX_W/2, pivotY);
+        ctx.rotate(Math.PI);
+        ctx.textAlign = 'center';
+        let fy = 0;
+        for(const l of fLines) {
+          ctx.font = (l.b ? 'bold ' : '') + l.s + 'px Georgia,serif';
+          ctx.fillStyle = l.b ? '#1a1008' : '#5a4a2a';
+          ctx.fillText(l.t, 0, fy);
+          fy += l.s * 1.55;
+        }
+        ctx.restore();
+
+        // ── QR in 4 corners — user QR, print mode ────────────────────
         const qrUrl2 = window._portalUrl || 'https://naqsh-athar.link';
         generateStyledQR(qrUrl2, croppedJpg, function(qrDataUrl) {
           const qrI = new Image();
