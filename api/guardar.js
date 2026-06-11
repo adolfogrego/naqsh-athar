@@ -3,7 +3,7 @@ import { put } from '@vercel/blob';
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '1mb',
+      sizeLimit: '200kb',
     },
   },
 };
@@ -19,20 +19,18 @@ function generateId() {
   return `${dd}${mm}${yy}${hh}${min}${ss}`;
 }
 
-function validateHtml(html) {
-  if (typeof html !== 'string') return { ok: false, reason: 'not a string' };
-  const sizeKB = Buffer.byteLength(html, 'utf8') / 1024;
-  if (sizeKB > 1024) return { ok: false, reason: `too large: ${sizeKB.toFixed(0)}KB` };
-  if (!html.includes('</html>')) return { ok: false, reason: 'missing </html>' };
-  const required = ['naqsh-athar', 'arabic-title', 'portada-circle',
-                    'activar-slide', 'dl-btn-html', 'نقش أثر'];
-  for (const marker of required) {
-    if (!html.includes(marker)) return { ok: false, reason: `missing marker: ${marker}` };
-  }
-  const forbidden = ['eval(', 'document.cookie'];
-  for (const pattern of forbidden) {
-    if (html.includes(pattern)) return { ok: false, reason: `forbidden: ${pattern}` };
-  }
+function validatePayload(photo, origin) {
+  if (typeof photo !== 'string')
+    return { ok: false, reason: 'photo not a string' };
+  if (!photo.startsWith('data:image/jpeg;base64,'))
+    return { ok: false, reason: 'photo must be JPEG data URL' };
+  const sizeKB = Buffer.byteLength(photo, 'utf8') / 1024;
+  if (sizeKB > 150)
+    return { ok: false, reason: `photo too large: ${sizeKB.toFixed(0)}KB` };
+  if (typeof origin !== 'string')
+    return { ok: false, reason: 'origin not a string' };
+  if (!/^https?:\/\//.test(origin))
+    return { ok: false, reason: 'origin must be a URL' };
   return { ok: true };
 }
 
@@ -44,28 +42,26 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    let { html } = req.body;
-    if (html && !html.startsWith('<!DOCTYPE')) {
-      html = '<!DOCTYPE html>\n' + html;
-    }
+    const { photo, origin } = req.body;
 
-    const validation = validateHtml(html);
+    const validation = validatePayload(photo, origin);
     if (!validation.ok) {
       console.error('Validation failed:', validation.reason);
       return res.status(400).json({ error: 'Contenido inválido', reason: validation.reason });
     }
 
     const id = generateId();
+    const portalUrl = `https://naqsh-athar.link/${id}`;
 
-    const blob = await put(`${id}.html`, html, {
+    const payload = JSON.stringify({ photo, origin, portalUrl });
+
+    await put(`${id}.json`, payload, {
       access: 'public',
-      contentType: 'text/html; charset=utf-8',
-      addRandomSuffix: false,  // keep clean filename
+      contentType: 'application/json',
+      addRandomSuffix: false,
     });
 
-    // Store the actual blob URL for [id].js to find
-    const url = `https://naqsh-athar.link/${id}`;
-    return res.status(200).json({ url, id, blobUrl: blob.url });
+    return res.status(200).json({ url: portalUrl, id });
 
   } catch (err) {
     console.error('guardar error:', err);

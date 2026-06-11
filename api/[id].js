@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   try {
     const storeId = process.env.BLOB_STORE_ID || '';
     const storePrefix = storeId.replace('store_', '').toLowerCase();
-    const blobUrl = `https://${storePrefix}.public.blob.vercel-storage.com/${id}.html`;
+    const blobUrl = `https://${storePrefix}.public.blob.vercel-storage.com/${id}.json`;
 
     const response = await fetch(blobUrl);
 
@@ -16,10 +16,17 @@ export default async function handler(req, res) {
       return res.redirect(302, 'https://naqsh-athar.link');
     }
 
-    const html = await response.text();
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    const data = await response.json();
+
+    // Validate structure before serving
+    if (!data.photo || !data.origin || !data.portalUrl) {
+      return res.redirect(302, 'https://naqsh-athar.link');
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    return res.status(200).send(html);
+    return res.status(200).json(data);
 
   } catch (err) {
     console.error('[id] error:', err);
