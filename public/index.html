@@ -1179,7 +1179,7 @@ function confirmCrop(){
   ctx2.save(); ctx2.beginPath(); ctx2.arc(LR/2,LR/2,LR/2,0,Math.PI*2); ctx2.clip();
   ctx2.drawImage(dragImg,(LR-natW*scale*r2)/2+ox*r2,(LR-natH*scale*r2)/2+oy*r2,natW*scale*r2,natH*scale*r2);
   ctx2.restore();
-  croppedLowRes=c2.toDataURL('image/jpeg',0.92);
+  croppedLowRes=c2.toDataURL('image/jpeg',0.75);  // lower quality — thumbnail use only
   setMode('grabbing');
   // Generate the circular result image first (always local)
   generateResultImage(croppedJpg, function(resultDataUrl) {
