@@ -3,7 +3,7 @@ import { put } from '@vercel/blob';
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '200kb',
+      sizeLimit: '400kb',
     },
   },
 };
@@ -25,8 +25,9 @@ function validatePayload(photo, origin) {
   if (!photo.startsWith('data:image/jpeg;base64,'))
     return { ok: false, reason: 'photo must be JPEG data URL' };
   const sizeKB = Buffer.byteLength(photo, 'utf8') / 1024;
-  if (sizeKB > 150)
-    return { ok: false, reason: `photo too large: ${sizeKB.toFixed(0)}KB` };
+  console.log(`photo size: ${sizeKB.toFixed(1)}KB`);
+  if (sizeKB > 300)
+    return { ok: false, reason: `photo too large: ${sizeKB.toFixed(0)}KB (max 300KB)` };
   if (typeof origin !== 'string')
     return { ok: false, reason: 'origin not a string' };
   if (!/^https?:\/\//.test(origin))
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
 
   try {
     const { photo, origin } = req.body;
+    console.log('guardar called, origin:', origin);
 
     const validation = validatePayload(photo, origin);
     if (!validation.ok) {
@@ -54,6 +56,7 @@ export default async function handler(req, res) {
     const portalUrl = `https://naqsh-athar.link/${id}`;
 
     const payload = JSON.stringify({ photo, origin, portalUrl });
+    console.log(`saving ${id}.json (${(payload.length/1024).toFixed(1)}KB)`);
 
     await put(`${id}.json`, payload, {
       access: 'public',
@@ -61,6 +64,7 @@ export default async function handler(req, res) {
       addRandomSuffix: false,
     });
 
+    console.log(`saved OK: ${portalUrl}`);
     return res.status(200).json({ url: portalUrl, id });
 
   } catch (err) {
