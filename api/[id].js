@@ -1,3 +1,5 @@
+import { list } from '@vercel/blob';
+
 export default async function handler(req, res) {
   const { id } = req.query;
 
@@ -6,20 +8,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const storeId = process.env.BLOB_STORE_ID || '';
-    const storePrefix = storeId.replace('store_', '').toLowerCase();
-    const blobUrl = `https://${storePrefix}.public.blob.vercel-storage.com/${id}.json`;
+    // Use SDK list() to find the blob — avoids manual URL construction
+    const { blobs } = await list({ prefix: `${id}.json` });
+    const blob = blobs.find(b => b.pathname === `${id}.json`);
 
-    const response = await fetch(blobUrl);
+    if (!blob) {
+      console.log(`[id] not found in blob: ${id}.json`);
+      return res.redirect(302, 'https://naqsh-athar.link');
+    }
 
+    const response = await fetch(blob.url);
     if (!response.ok) {
+      console.log(`[id] fetch failed for ${blob.url}: ${response.status}`);
       return res.redirect(302, 'https://naqsh-athar.link');
     }
 
     const data = await response.json();
 
-    // Validate structure before serving
     if (!data.photo || !data.origin || !data.portalUrl) {
+      console.log(`[id] invalid structure for ${id}`);
       return res.redirect(302, 'https://naqsh-athar.link');
     }
 
