@@ -908,6 +908,44 @@ goTo(0);
 let natW=0,natH=0,scale=1,ox=0,oy=0;
 let mode='empty';
 let croppedJpg=null, croppedLowRes=null;
+
+// ── Timestamp data bootstrap ─────────────────────────────────────────────────
+// If URL has a timestamp ID, fetch JSON data and apply before initializing flip card
+(async function bootstrapTimestampData() {
+  const match = window.location.pathname.match(/\/(\d{12,15})$/);
+  if (!match) {
+    // Base version — run initPortadaFlip immediately
+    initPortadaFlip();
+    return;
+  }
+  const id = match[1];
+  try {
+    const apiUrl = `/api/data/${id}`;
+    const resp = await fetch(apiUrl);
+    if (!resp.ok) throw new Error('not found');
+    const data = await resp.json();
+
+    // 1. Inject NAQSH_ORIGIN as a comment in <head> (preserves all existing readers)
+    const commentNode = document.createComment(` NAQSH_ORIGIN: ${data.origin} `);
+    document.head.appendChild(commentNode);
+
+    // 2. Update portada-circle with user photo
+    const portadaEl = document.getElementById('portada-circle');
+    if (portadaEl && data.photo) {
+      portadaEl.src = data.photo;
+    }
+
+    // 3. Store portal URL so PDF generation and QR use it
+    window._portalUrl = data.portalUrl;
+
+  } catch(e) {
+    console.warn('Bootstrap fetch failed:', e.message);
+    // Graceful degradation — continue as base version
+  }
+
+  // Always init flip card after attempt (data applied or not)
+  initPortadaFlip();
+})();
 let panning=false,px0=0,py0=0,ox0=0,oy0=0;
 let pinch0=null,scale0=1;
 
@@ -938,7 +976,7 @@ function applyRadialFade(canvas, fadeStart) {
 }
 
 // ── Portada flip card ─────────────────────────────────────────────────────────
-(function initPortadaFlip(){
+function initPortadaFlip(){
   const flipEl      = document.getElementById('portada-flip');
   const flipFront   = flipEl ? flipEl.querySelector('.portada-flip-front img') : null;
   const flipCanvas  = document.getElementById('portada-qr-canvas');
@@ -949,7 +987,7 @@ function applyRadialFade(canvas, fadeStart) {
   const portadaSrc = portadaEl ? portadaEl.src : '';
   const isUserVersion = portadaSrc.startsWith('data:image/jpeg');
 
-  // Parse origin URL for QR (only present in timestamp versions)
+  // Parse origin URL for QR — injected dynamically from JSON or as HTML comment
   const originMatch = document.head.innerHTML.match(/NAQSH_ORIGIN:\s*(https?:\/\/\S+)\s*-->/);
   const originUrl   = originMatch ? originMatch[1].trim() : null;
 
@@ -1021,7 +1059,7 @@ function applyRadialFade(canvas, fadeStart) {
       flipEl.classList.toggle('flipped');
     });
   }
-})();
+}
 const dlGroup  = document.getElementById('dl-group');
 // btnCycle removed
 const btnAdj   = document.getElementById('act-btn-adj');
@@ -2165,38 +2203,18 @@ async function attemptUpload() {
     if(navigator.onLine) {
       (async () => {
         try {
-          // Reset DOM state before capturing — ensure trazo is visible in new HTML
-          const trazoBgEl = document.getElementById('act-trazo-bg');
-          const trazoPortalEl = document.getElementById('act-trazo-portal');
-          const resultCanvasEl = document.getElementById('act-result-canvas');
-          const grabbingEl = document.getElementById('act-grabbing');
-          const introEl = document.getElementById('act-intro');
-          // Temporarily reset to empty state for clean capture
-          if(trazoBgEl)     trazoBgEl.classList.remove('hidden');
-          if(trazoPortalEl) trazoPortalEl.style.display = 'flex';
-          if(resultCanvasEl) resultCanvasEl.classList.remove('on');
-          if(grabbingEl)    grabbingEl.classList.remove('on');
-          if(introEl)       introEl.classList.remove('hidden');
+          // No DOM capture needed — only sending photo JSON
 
-          let newSrc = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-
-          // Restore state after capture
-          if(trazoBgEl)     trazoBgEl.classList.add('hidden');
-          if(trazoPortalEl) trazoPortalEl.style.display = 'none';
-          if(resultCanvasEl) resultCanvasEl.classList.add('on');
-          if(introEl)       introEl.classList.add('hidden');
-
-          newSrc = newSrc.replace(/id="portada-circle"[^>]*src="[^"]*"/,
-            'id="portada-circle" src="'+croppedLowRes+'"');
-          newSrc = newSrc.replace('</head>',
-            '<!-- NAQSH_ORIGIN: '+window.location.href+' -->\n</head>');
           const apiUrl = window.location.protocol === 'file:'
             ? 'https://naqsh-athar.link/api/guardar'
             : '/api/guardar';
           const resp = await fetch(apiUrl,{
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({html:newSrc})
+            body:JSON.stringify({
+              photo:  croppedLowRes,
+              origin: window.location.href
+            })
           });
           if(!resp.ok) throw new Error('server ' + resp.status);
           const {url} = await resp.json();
