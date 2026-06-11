@@ -1744,9 +1744,17 @@ async function generateFanzinePDF() {
     if(!leftPhotoDataUrl) leftPhotoDataUrl = parchmentCircle();
 
     const leftUrl = originUrl || 'https://naqsh-athar.link';
+    // Right QR photo: use croppedJpg if available, else portada-circle (timestamp version),
+    // else parchment circle (base version)
+    let rightPhotoDataUrl = croppedJpg;
+    if(!rightPhotoDataUrl && portadaSrc && portadaSrc.startsWith('data:image/jpeg')) {
+      rightPhotoDataUrl = await srcToDataUrl(portadaSrc);
+    }
+    if(!rightPhotoDataUrl) rightPhotoDataUrl = parchmentCircle();
+
     const [leftQrDataUrl, rightQrDataUrl] = await Promise.all([
-      makeQR(leftUrl,  leftPhotoDataUrl, 'cover'),
-      makeQR(userUrl,  croppedJpg,       'cover'),
+      makeQR(leftUrl,  leftPhotoDataUrl,  'cover'),
+      makeQR(userUrl,  rightPhotoDataUrl, 'cover'),
     ]);
     const leftQrImg  = await embedDataUrl(doc, leftQrDataUrl);
     const rightQrImg = await embedDataUrl(doc, rightQrDataUrl);
@@ -1958,7 +1966,8 @@ async function generateFanzinePDF() {
 
         // ── QR in 4 corners — user QR, print mode ────────────────────
         const qrUrl2 = window._portalUrl || 'https://naqsh-athar.link';
-        generateStyledQR(qrUrl2, croppedJpg, function(qrDataUrl) {
+        // Use rightPhotoDataUrl (already resolved above) — never null
+        generateStyledQR(qrUrl2, rightPhotoDataUrl, function(qrDataUrl) {
           const qrI = new Image();
           qrI.onload = function() {
             const QR_SZ = Math.round(Math.min(PX_W, PX_H) * 0.14);
