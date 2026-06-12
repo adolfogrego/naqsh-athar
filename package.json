@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@vercel/blob": "^0.22.0"
+    "@vercel/blob": "^0.22.0",
+    "@napi-rs/canvas": "^0.1.44",
+    "qrcode": "^1.5.4"
   }
 }

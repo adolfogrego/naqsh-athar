@@ -1,21 +1,12 @@
 {
   "outputDirectory": "public",
   "rewrites": [
-    {
-      "source": "/api/data/:id(\\d{12,15})",
-      "destination": "/api/[id]?id=:id"
-    },
-    {
-      "source": "/:id(\\d{12,15})",
-      "destination": "/index.html"
-    }
+    { "source": "/api/data/:id(\\d{12,15})", "destination": "/api/[id]?id=:id" },
+    { "source": "/:id(\\d{12,15})", "destination": "/index.html" }
   ],
   "functions": {
-    "api/guardar.js": {
-      "maxDuration": 30
-    },
-    "api/[id].js": {
-      "maxDuration": 10
-    }
+    "api/guardar.js": { "maxDuration": 30 },
+    "api/[id].js":    { "maxDuration": 10 },
+    "api/og.js":      { "maxDuration": 15 }
   }
 }
