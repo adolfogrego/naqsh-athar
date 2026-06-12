@@ -247,7 +247,6 @@
       color:var(--ink);
       border-color:var(--ink);
     }
-    .btn-dl-trazo:hover{color:var(--ink);border-color:var(--ink-faint);}
     .trazo-next-link{
       display:inline-block;
       color:var(--ink-mid);
@@ -399,6 +398,24 @@
       transition:border-color .3s, background .3s;
     }
     .chk:hover{border-color:var(--ink-faint);background:rgba(154,138,106,.08);}
+    /* ── Botón GRABAR Y REDIMENSIONAR ── */
+    .btn-grabar{
+      background:var(--parchment);
+      color:var(--ink);
+      border:none;
+      border-radius:8px;
+      font-family:'EB Garamond',serif;
+      font-size:clamp(.8rem,2.2vw,.95rem);
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      padding:.65rem 1.4rem;
+      cursor:pointer;
+      width:100%;max-width:280px;
+      transition:background .3s,color .3s,opacity .3s;
+    }
+    .btn-grabar:hover{background:var(--parchment-dark);}
+    .activar-dark .btn-grabar{background:var(--parchment-dark);color:var(--ink);}
+    .activar-dark .btn-grabar:hover{background:var(--parchment);}
     .chk-label{
       font-family:'EB Garamond',serif;
       font-size:.82rem;letter-spacing:.16em;
@@ -742,20 +759,7 @@
 
           <button class="rtext secondary" id="act-btn-adj">Naqsh-Athar se ubica en el centro</button>
           <div class="confirm-row" id="act-confirm-row">
-            <button class="chk" id="act-btn-chk" style="
-              background:var(--parchment);
-              color:var(--ink);
-              border:none;
-              border-radius:8px;
-              font-family:'EB Garamond',serif;
-              font-size:clamp(.8rem,2.2vw,.95rem);
-              letter-spacing:.12em;
-              text-transform:uppercase;
-              padding:.65rem 1.4rem;
-              cursor:pointer;
-              width:100%;max-width:280px;
-              height:auto;
-            ">GRABAR Y REDIMENSIONAR</button>
+            <button class="btn-grabar" id="act-btn-chk">GRABAR Y REDIMENSIONAR</button>
             <span id="act-lbl-chk" style="display:none"></span>
           </div>
         </div>
@@ -2127,7 +2131,26 @@ if(offlineModalClose) {
 
 dlPng.addEventListener('click', function(e) {
   e.stopPropagation();
-  if(!window._styledQRUrl) return;
+  if(!window._styledQRUrl) {
+    setSt('Generando imagen, espera un momento…', true);
+    // Retry until ready (max 10s)
+    let tries = 0;
+    const poll = setInterval(function() {
+      tries++;
+      if(window._styledQRUrl) {
+        clearInterval(poll);
+        setSt('');
+        const a = document.createElement('a');
+        a.href = window._styledQRUrl;
+        a.download = 'naqsh-athar.png';
+        a.click();
+      } else if(tries > 100) {
+        clearInterval(poll);
+        setSt('No se pudo generar la imagen.');
+      }
+    }, 100);
+    return;
+  }
   const a = document.createElement('a');
   a.href = window._styledQRUrl;
   a.download = 'naqsh-athar.png';
@@ -2302,23 +2325,23 @@ async function attemptUpload() {
 function showOfflineResult() {
   // Generate QR with base URL (no timestamp)
   const baseUrl = 'https://naqsh-athar.link';
-  // Screen version for display
-  generateStyledQR(baseUrl, croppedJpg, function(screenQrDataUrl) {
-    const rc = document.getElementById('act-result-canvas');
-    if(rc) {
-      const img2 = new Image();
-      img2.onload = function() {
-        rc.width = rc.offsetWidth||200;
-        rc.height = rc.offsetHeight||200;
-        rc.getContext('2d').drawImage(img2,0,0,rc.width,rc.height);
-      };
-      img2.src = screenQrDataUrl;
-    }
-    setMode('confirmed');
-  }, 'screen');
-  // Print version stored for PNG download
+  // Print version stored for PNG download — generate first so it's ready
   generateStyledQR(baseUrl, croppedJpg, function(printQrDataUrl) {
     window._styledQRUrl = printQrDataUrl;
+    // Screen version for display — generated after print to avoid race
+    generateStyledQR(baseUrl, croppedJpg, function(screenQrDataUrl) {
+      const rc = document.getElementById('act-result-canvas');
+      if(rc) {
+        const img2 = new Image();
+        img2.onload = function() {
+          rc.width = rc.offsetWidth||200;
+          rc.height = rc.offsetHeight||200;
+          rc.getContext('2d').drawImage(img2,0,0,rc.width,rc.height);
+        };
+        img2.src = screenQrDataUrl;
+      }
+      setMode('confirmed');
+    }, 'screen');
   }, 'print');
 }
 
