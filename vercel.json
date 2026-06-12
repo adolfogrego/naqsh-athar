@@ -4,6 +4,10 @@
     {
       "source": "/api/data/:id(\\d{12,15})",
       "destination": "/api/[id]?id=:id"
+    },
+    {
+      "source": "/:id(\\d{12,15})",
+      "destination": "/index.html"
     }
   ],
   "functions": {
