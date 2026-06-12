@@ -743,13 +743,13 @@
         </div>
 
         <div class="dl-group" id="dl-group">
-          <p class="dl-label" style="font-style:italic;font-size:1.05rem;letter-spacing:.02em;margin-bottom:1.2rem;text-transform:none;">Naqsh-Athar ha adquirido nueva forma:</p>
-          <button class="dl-btn" id="dl-btn-png">Una imagen para enviar o unir a la superficie donde ejercerá su poder.</button>
-          <p class="dl-desc" style="margin-top:1rem;font-weight:bold;color:var(--parchment);">Y la réplica de esta experiencia en:</p>
-          <button class="dl-btn" id="dl-btn-html">Un vínculo que volverá a despertarme.</button>
-          <button class="dl-btn" id="dl-btn-pdf">Una estructura lista para trasladarla sobre papel.</button>
+          <p class="dl-label" style="font-size:1.05rem;letter-spacing:.02em;margin-bottom:.3rem;text-transform:none;font-style:normal;"><strong>Naqsh-Athar ha adquirido nuevas formas</strong></p>
+          <p class="dl-label" style="font-size:1.05rem;letter-spacing:.02em;margin-bottom:1.2rem;text-transform:none;font-style:normal;">replicables sobre las superficies donde ejercerán su influencia:</p>
+          <button class="dl-btn" id="dl-btn-png">Una imagen</button>
+          <button class="dl-btn" id="dl-btn-html">Un vínculo</button>
+          <button class="dl-btn" id="dl-btn-pdf">Un documento</button>
           <p class="status-line" id="act-status"></p>
-          <hr class="dl-divider"/>
+          <hr class="dl-divider" style="border:none;border-top:1px solid rgba(245,240,232,0.35);margin:.8rem auto;max-width:120px;"/>
           <button class="rtext on" id="act-btn-restart" style="font-size:1rem;font-weight:bold;letter-spacing:.12em;margin-top:.5rem;">Regenerar Naqsh-Athar</button>
         </div>
       </div>
@@ -1233,6 +1233,7 @@ function openCam(){
 // ── Portal modal ─────────────────────────────────────────────────────────────
 const portalModal = document.getElementById('portal-modal');
 const portalModalBtn = document.getElementById('portal-modal-btn');
+const portalModalText = portalModal.querySelector('.portal-modal-text');
 
 function hidePortalModal(){
   window._modalOpen = false;
@@ -1240,9 +1241,11 @@ function hidePortalModal(){
   setTimeout(()=>{ portalModal.classList.remove('on'); }, 300);
 }
 
-function showPortalModal(onConfirm){
+function showPortalModal(onConfirm, text, btnLabel){
   if(window._modalOpen) return;
   window._modalOpen = true;
+  if(text) portalModalText.innerHTML = text;
+  if(btnLabel) portalModalBtn.textContent = btnLabel;
   portalModal.classList.add('on');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     portalModal.classList.add('visible');
@@ -1334,6 +1337,15 @@ vp.addEventListener('touchend',e=>{if(e.touches.length<2)pinch0=null;});
 // ══ DOWNLOAD TRAZO PNG (carta 300dpi) ══
 document.getElementById('btn-dl-trazo').addEventListener('click', function() {
   generateFanzinePDF();
+});
+
+// Tap en imagen del trazo → modal de confirmación de descarga
+document.querySelector('.trazo-img').addEventListener('click', function() {
+  showPortalModal(
+    function(){ generateFanzinePDF(); },
+    'Se trasladará<br>al papel',
+    'Ahora'
+  );
 });
 
 // Links en sección V → navegar a slide 6
@@ -2069,7 +2081,7 @@ async function generateFanzinePDF() {
     console.error('PDF error:', err);
     setSt('error: ' + (err.message || String(err)));
   } finally {
-    dlGroup.classList.add('on');
+    if(mode === 'confirmed') dlGroup.classList.add('on');
   }
 }
 
