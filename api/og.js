@@ -2,7 +2,6 @@ import { list } from '@vercel/blob';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 // ── Arabic text overlay ───────────────────────────────────────────────────────
-// نقش أثر  (U+0646 U+0642 U+0634 U+0020 U+0623 U+062b U+0631)
 const ARABIC = '\u0646\u0642\u0634 \u0623\u062b\u0631';
 
 // ── Seedable random (same fill pattern as browser) ───────────────────────────
@@ -21,7 +20,7 @@ function buildQRMatrix(url) {
   return QRCode.create(url, { errorCorrectionLevel: 'H' });
 }
 
-// ── Radial fade (clip to circle with soft edge) ───────────────────────────────
+// ── Radial fade ───────────────────────────────────────────────────────────────
 function applyRadialFade(ctx, R, fadeStart) {
   const S = R * 2;
   const innerR = R * fadeStart;
@@ -46,32 +45,32 @@ function drawArabic(ctx, R) {
   ctx.restore();
 }
 
-// ── Orante parchment circle (base URL, no photo) ──────────────────────────────
+// ── Orante parchment circle (fallback when no blob) ───────────────────────────
 function renderOrante(ctx, SIZE) {
   const R = SIZE / 2;
   ctx.clearRect(0, 0, SIZE, SIZE);
 
-  // Parchment gradient background
+  // Solid parchment background (no transparency)
+  ctx.beginPath();
+  ctx.arc(R, R, R, 0, Math.PI * 2);
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fill();
+
   const grad = ctx.createRadialGradient(R, R * 0.85, 20, R, R, R);
   grad.addColorStop(0, '#ece5d6');
   grad.addColorStop(0.7, '#d8cdb4');
   grad.addColorStop(1, '#c4b896');
-
   ctx.beginPath();
   ctx.arc(R, R, R, 0, Math.PI * 2);
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // Subtle inner ring
   ctx.beginPath();
   ctx.arc(R, R, R - 8, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(90,62,40,0.18)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  applyRadialFade(ctx, R, 0.82);
-
-  // Outer border
   ctx.beginPath();
   ctx.arc(R, R, R - 2, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(26,16,8,0.4)';
@@ -81,14 +80,19 @@ function renderOrante(ctx, SIZE) {
   drawArabic(ctx, R);
 }
 
-// ── User photo circle (clean, no QR) — for OG mode ───────────────────────────
+// ── Photo circle (clean, no QR) — for OG mode ────────────────────────────────
 async function renderPhotoClean(ctx, photoDataUrl, SIZE) {
   const R = SIZE / 2;
   ctx.clearRect(0, 0, SIZE, SIZE);
 
+  // Solid parchment background — prevents transparency issues in OG scrapers
+  ctx.beginPath();
+  ctx.arc(R, R, R, 0, Math.PI * 2);
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fill();
+
   const photoImg = await loadImage(Buffer.from(photoDataUrl.split(',')[1], 'base64'));
 
-  // Clip to circle and draw photo
   ctx.save();
   ctx.beginPath();
   ctx.arc(R, R, R, 0, Math.PI * 2);
@@ -97,15 +101,21 @@ async function renderPhotoClean(ctx, photoDataUrl, SIZE) {
   const w = photoImg.width * scale;
   const h = photoImg.height * scale;
   ctx.drawImage(photoImg, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
-
-  // Parchment tint
   ctx.fillStyle = 'rgba(245,240,232,0.22)';
   ctx.fill();
   ctx.restore();
 
   applyRadialFade(ctx, R, 0.82);
 
-  // Outer border
+  // Redraw background behind fade edge
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.beginPath();
+  ctx.arc(R, R, R, 0, Math.PI * 2);
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fill();
+  ctx.restore();
+
   ctx.beginPath();
   ctx.arc(R, R, R - 2, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(26,16,8,0.4)';
@@ -115,7 +125,7 @@ async function renderPhotoClean(ctx, photoDataUrl, SIZE) {
   drawArabic(ctx, R);
 }
 
-// ── User photo circle with QR — for download mode ────────────────────────────
+// ── Photo circle with QR — for download mode ─────────────────────────────────
 async function renderPhotoWithQR(ctx, photoDataUrl, portalUrl, SIZE) {
   const R = SIZE / 2;
   const BW = 3;
@@ -123,7 +133,6 @@ async function renderPhotoWithQR(ctx, photoDataUrl, portalUrl, SIZE) {
 
   ctx.clearRect(0, 0, SIZE, SIZE);
 
-  // Photo background
   const photoImg = await loadImage(Buffer.from(photoDataUrl.split(',')[1], 'base64'));
   ctx.save();
   ctx.beginPath();
@@ -132,7 +141,6 @@ async function renderPhotoWithQR(ctx, photoDataUrl, portalUrl, SIZE) {
   ctx.drawImage(photoImg, 0, 0, SIZE, SIZE);
   ctx.restore();
 
-  // Parchment overlay
   ctx.save();
   ctx.beginPath();
   ctx.arc(R, R, R, 0, Math.PI * 2);
@@ -141,7 +149,6 @@ async function renderPhotoWithQR(ctx, photoDataUrl, portalUrl, SIZE) {
   ctx.fill();
   ctx.restore();
 
-  // QR matrix
   const qrData = buildQRMatrix(portalUrl);
   const modules = qrData.modules;
   const n = modules.size;
@@ -207,7 +214,6 @@ async function renderPhotoWithQR(ctx, photoDataUrl, portalUrl, SIZE) {
     ctx.fillStyle = INK; ctx.fill();
   }
 
-  // Outer border
   ctx.beginPath();
   ctx.arc(R, R, R - BW / 2, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(26,16,8,0.5)';
@@ -231,7 +237,6 @@ export default async function handler(req, res) {
   try {
     // ── Case 1: No ID → Orante (base URL) ───────────────────────────────────
     if (!id) {
-      // Try to load Orante photo from blob
       try {
         const { blobs } = await list({ prefix: 'orante.json' });
         const oranteBlob = blobs.find(b => b.pathname === 'orante.json');
@@ -250,7 +255,7 @@ export default async function handler(req, res) {
           }
         }
       } catch(e) {
-        console.warn('orante.json fetch failed, falling back to generated:', e.message);
+        console.warn('orante.json fetch failed, falling back:', e.message);
       }
       // Fallback: generated parchment
       renderOrante(ctx, SIZE);
@@ -261,12 +266,12 @@ export default async function handler(req, res) {
       return res.status(200).send(png);
     }
 
-    // ── Validate ID ─────────────────────────────────────────────────────────
+    // ── Validate ID ──────────────────────────────────────────────────────────
     if (!/^\d{12}(\d{3})?$/.test(id)) {
       return res.status(400).json({ error: 'invalid id' });
     }
 
-    // ── Fetch photo from blob ────────────────────────────────────────────────
+    // ── Fetch photo from blob ─────────────────────────────────────────────────
     const { blobs } = await list({ prefix: `${id}.json` });
     const blob = blobs.find(b => b.pathname === `${id}.json`);
     if (!blob) return res.status(404).json({ error: 'not found' });
@@ -275,7 +280,7 @@ export default async function handler(req, res) {
     if (!blobRes.ok) return res.status(502).json({ error: 'blob fetch failed' });
     const data = await blobRes.json();
 
-    const portalUrl   = data.portalUrl || `https://naqsh-athar.link/${id}`;
+    const portalUrl    = data.portalUrl || `https://naqsh-athar.link/${id}`;
     const photoDataUrl = data.photo;
 
     // ── Case 2: OG mode → photo clean + arabic ───────────────────────────────
