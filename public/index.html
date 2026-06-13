@@ -1233,6 +1233,28 @@ document.addEventListener('keydown', e => {
 
 goTo(0);
 
+// ── Guardar Orante en blob (solo URL base, una vez) ───────────────────────────
+(function(){
+  const m = window.location.pathname.match(/^\/(\d{12,15})$/);
+  if(m) return; // URL con timestamp — no hacer nada
+  if(!navigator.onLine) return;
+  // Silently upload Orante photo so og.js can use it
+  setTimeout(function(){
+    const portadaEl = document.getElementById('portada-circle');
+    if(!portadaEl || !portadaEl.src) return;
+    const src = portadaEl.src;
+    if(!src.startsWith('data:image/')) return;
+    const apiUrl = window.location.protocol === 'file:'
+      ? 'https://naqsh-athar.link/api/guardar-orante'
+      : '/api/guardar-orante';
+    fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo: src })
+    }).catch(function(){});  // silent — no UI impact
+  }, 2000); // wait for portada-circle to be fully loaded
+})();
+
 // ══ ACTIVATION STATE ══
 let natW=0,natH=0,scale=1,ox=0,oy=0;
 let mode='empty';
