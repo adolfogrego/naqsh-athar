@@ -231,6 +231,28 @@ export default async function handler(req, res) {
   try {
     // ── Case 1: No ID → Orante (base URL) ───────────────────────────────────
     if (!id) {
+      // Try to load Orante photo from blob
+      try {
+        const { blobs } = await list({ prefix: 'orante.json' });
+        const oranteBlob = blobs.find(b => b.pathname === 'orante.json');
+        if (oranteBlob) {
+          const oranteRes = await fetch(oranteBlob.url);
+          if (oranteRes.ok) {
+            const oranteData = await oranteRes.json();
+            if (oranteData.photo) {
+              await renderPhotoClean(ctx, oranteData.photo, SIZE);
+              const png = canvas.toBuffer('image/png');
+              res.setHeader('Content-Type', 'image/png');
+              res.setHeader('Cache-Control', 'public, max-age=86400');
+              res.setHeader('Content-Length', png.length);
+              return res.status(200).send(png);
+            }
+          }
+        }
+      } catch(e) {
+        console.warn('orante.json fetch failed, falling back to generated:', e.message);
+      }
+      // Fallback: generated parchment
       renderOrante(ctx, SIZE);
       const png = canvas.toBuffer('image/png');
       res.setHeader('Content-Type', 'image/png');
