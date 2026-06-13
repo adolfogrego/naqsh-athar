@@ -283,7 +283,7 @@ export default async function handler(req, res) {
 
       const png = canvas.toBuffer('image/png');
       res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Content-Length', png.length);
       return res.status(200).send(png);
     }
