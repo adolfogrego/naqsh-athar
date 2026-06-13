@@ -44,15 +44,36 @@ function drawArabic(ctx, cx, cy, R) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.direction = 'rtl';
-  // Dark shadow for contrast
-  ctx.shadowColor = 'rgba(26,16,8,0.9)';
-  ctx.shadowBlur = Math.round(fontSize * 0.15);
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(ARABIC, cx, cy);
-  // Second pass: stronger shadow
-  ctx.shadowBlur = Math.round(fontSize * 0.3);
+
+  // Measure text width for background pill
+  const metrics = ctx.measureText(ARABIC);
+  const tw = metrics.width || fontSize * 3;
+  const pad = fontSize * 0.35;
+
+  // Draw dark pill behind text
+  const px = cx - tw / 2 - pad;
+  const py = cy - fontSize * 0.65;
+  const pw = tw + pad * 2;
+  const ph = fontSize * 1.3;
+  const pr = ph / 2;
+
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(26,16,8,0.72)';
+  ctx.beginPath();
+  ctx.moveTo(px + pr, py);
+  ctx.lineTo(px + pw - pr, py);
+  ctx.arcTo(px + pw, py, px + pw, py + ph, pr);
+  ctx.lineTo(px + pw, py + ph - pr);
+  ctx.arcTo(px + pw, py + ph, px + pw - pr, py + ph, pr);
+  ctx.lineTo(px + pr, py + ph);
+  ctx.arcTo(px, py + ph, px, py + ph - pr, pr);
+  ctx.lineTo(px, py + pr);
+  ctx.arcTo(px, py, px + pr, py, pr);
+  ctx.closePath();
+  ctx.fill();
+
+  // Draw white text on top
+  ctx.fillStyle = '#f5f0e8';
   ctx.fillText(ARABIC, cx, cy);
   ctx.restore();
 }
