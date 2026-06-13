@@ -1,5 +1,6 @@
 import { list } from '@vercel/blob';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { join } from 'path';
 
 // ── Arabic text overlay ───────────────────────────────────────────────────────
 // نقش أثر  (U+0646 U+0642 U+0634 U+0020 U+0623 U+062b U+0631)
@@ -49,7 +50,7 @@ function drawArabic(ctx, R) {
 // ── Orante parchment circle (base URL, no photo) ──────────────────────────────
 async function renderOrante(ctx, SIZE) {
   const R = SIZE / 2;
-  const img = await loadImage('./public/orante.png');
+  const img = await loadImage(path.join(process.cwd(), 'public', 'orante.png'));
   ctx.clearRect(0, 0, SIZE, SIZE);
   ctx.save();
   ctx.beginPath();
