@@ -49,12 +49,12 @@
     }
     .slides{
       display:flex;
-      width:700%; /* 7 slides */
+      width:800%; /* 8 slides */
       height:100%;
       transition:transform .55s cubic-bezier(.77,0,.18,1);
     }
     .slide{
-      width:calc(100% / 7);
+      width:calc(100% / 8);
       height:100%;
       overflow-y:auto;
       -webkit-overflow-scrolling:touch;
@@ -175,6 +175,79 @@
     .subtitle{
       font-size:1.1rem;font-style:italic;
       color:var(--ink-mid);margin-top:2rem;line-height:1.5;
+    }
+
+    /* ── SLIDE TRANSICIÓN ── */
+    .trans-coin{
+      width:var(--circle-size);height:var(--circle-size);
+      margin:0 auto 2rem;
+      perspective:900px;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      user-select:none;-webkit-user-select:none;
+    }
+    .trans-coin-inner{
+      width:100%;height:100%;
+      position:relative;
+      transform-style:preserve-3d;
+    }
+    .trans-coin-face{
+      position:absolute;inset:0;
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+      border-radius:50%;overflow:hidden;
+    }
+    .trans-coin-face canvas{
+      width:100%;height:100%;border-radius:50%;display:block;
+    }
+    .trans-coin-back{ transform:rotateY(180deg); }
+    .trans-arabic-overlay{
+      position:absolute;inset:0;
+      display:flex;align-items:center;justify-content:center;
+      pointer-events:none;
+    }
+    .trans-arabic-overlay span{
+      font-family:'Amiri',serif;font-weight:400;
+      font-size:clamp(1.4rem,5vw,2rem);
+      color:rgba(26,16,8,0.75);direction:rtl;line-height:1;
+    }
+    .trans-btn-group{
+      display:flex;flex-direction:column;align-items:center;
+      gap:.75rem;width:100%;
+    }
+    .trans-btn{
+      border-radius:8px;
+      font-family:'EB Garamond',serif;
+      font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+      cursor:pointer;padding:.5rem 1.4rem;
+      width:fit-content;min-width:120px;max-width:220px;
+      display:block;
+      transition:background .3s,color .3s,border-color .3s,opacity .3s;
+    }
+    .trans-btn-transmitir{
+      background:var(--parchment);border:1px solid var(--ink);color:var(--ink);
+    }
+    .trans-btn-transmitir:hover{ background:var(--parchment-mid); }
+    .trans-btn-regenerar{
+      background:var(--ink);border:1px solid var(--ink);color:var(--parchment);
+    }
+    .trans-btn-regenerar:hover{ background:var(--ink-mid);border-color:var(--ink-mid); }
+    .trans-btn-sub{
+      background:var(--parchment);border:1px solid var(--ink);color:var(--ink);
+      font-size:.68rem;letter-spacing:.2em;
+    }
+    .trans-btn-sub:hover{ background:var(--parchment-mid); }
+    .trans-sub-group{
+      display:flex;flex-direction:column;align-items:center;
+      gap:.75rem;width:100%;overflow:hidden;
+      max-height:0;opacity:0;
+      transition:max-height .42s cubic-bezier(.4,0,.2,1),opacity .32s ease;
+    }
+    .trans-sub-group.open{ max-height:130px;opacity:1; }
+    .trans-status{
+      margin-top:.9rem;font-size:.72rem;letter-spacing:.08em;
+      color:var(--ink-faint);min-height:1em;text-align:center;
+      transition:opacity .4s;
     }
 
     /* ── TEXT SLIDES ── */
@@ -691,6 +764,44 @@
       </div>
     </div>
 
+    <!-- ══ TRANS. ¿QUÉ DEBO HACER AHORA? ══ -->
+    <div class="slide" id="slide-trans">
+      <div class="slide-inner" style="text-align:center;">
+        <h2 class="section-heading" style="font-weight:400;">¿Qué debo hacer ahora?</h2>
+        <div class="divider"></div>
+
+        <!-- Coin flip -->
+        <div class="trans-coin" id="trans-coin">
+          <div class="trans-coin-inner" id="trans-coin-inner">
+            <div class="trans-coin-face trans-coin-front">
+              <canvas id="trans-canvas-front" width="500" height="500"></canvas>
+              <div class="trans-arabic-overlay"><span>نقش أثر</span></div>
+            </div>
+            <div class="trans-coin-face trans-coin-back">
+              <canvas id="trans-canvas-back" width="500" height="500"></canvas>
+              <div class="trans-arabic-overlay"><span>نقش أثر</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="trans-btn-group">
+          <button class="trans-btn trans-btn-transmitir" id="trans-btn-transmitir" onclick="transToggleTransmit()">
+            Transmitir
+          </button>
+          <div class="trans-sub-group" id="trans-sub-group">
+            <button class="trans-btn trans-btn-sub" onclick="transShareLink()">Vínculo</button>
+            <button class="trans-btn trans-btn-sub" onclick="transShareImage()">Imagen</button>
+          </div>
+          <button class="trans-btn trans-btn-regenerar" onclick="transRegenerar()">
+            Regenerar
+          </button>
+        </div>
+
+        <p class="trans-status" id="trans-status">&nbsp;</p>
+      </div>
+    </div>
+
     <!-- ══ 5. EL TRAZO ══ -->
     <div class="slide trazo-slide">
       <div class="slide-inner">
@@ -796,6 +907,7 @@
     <button class="dot" data-idx="4"></button>
     <button class="dot" data-idx="5"></button>
     <button class="dot" data-idx="6"></button>
+    <button class="dot" data-idx="7"></button>
   </div>
   <button class="nav-arrow" id="nav-next" aria-label="Siguiente">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -836,7 +948,7 @@ const SVG_B64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU
 const QR_PRINT_B64 = "data:image/png;base64,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";
 const PDF_W=792,PDF_H=612,HALF=PDF_W/2;
 const CIRCLE_PT=5*28.3465, QR_PT=5*28.3465;
-const TOTAL_SLIDES=7;
+const TOTAL_SLIDES=8;
 const LETTER_W=2550,LETTER_H=3300;
 
 // ══ SLIDER STATE ══
@@ -870,10 +982,21 @@ function goTo(n) {
   if(sliderLocked) return;
   n = ((n % TOTAL_SLIDES) + TOTAL_SLIDES) % TOTAL_SLIDES;
 
+  const TRANS_IDX = 5; // slide-trans index
+  const TRAZO_IDX = 6; // El trazo index
+
   const isCircularJump = (current === 0 && n === TOTAL_SLIDES-1) ||
                          (current === TOTAL_SLIDES-1 && n === 0);
 
-  if(isCircularJump) {
+  // Fade transition: slide-trans ↔ El trazo
+  const isFadeJump = (current === TRANS_IDX && n === TRAZO_IDX) ||
+                     (current === TRAZO_IDX && n === TRANS_IDX);
+
+  // Stop/start coin spin based on destination
+  if(n === TRANS_IDX) { transStartSpin(); }
+  else { transStopSpin(); }
+
+  if(isCircularJump || isFadeJump) {
     slidesEl.style.transition = 'opacity .35s ease';
     slidesEl.style.opacity = '0';
     setTimeout(() => {
@@ -907,12 +1030,14 @@ navNext.addEventListener('click', () => goTo(current+1));
 let touchX=null, touchStartCount=0;
 const slider = document.getElementById('slider');
 slider.addEventListener('touchstart', e => {
+  if(window._modalOpen) { touchX=null; return; }   // ignore while modal open
   touchStartCount = e.touches.length;
   if(e.touches.length === 1) touchX = e.touches[0].clientX;
   else touchX = null; // multi-touch = pinch, ignore swipe
 }, {passive:true});
 slider.addEventListener('touchend', e => {
   if(window._cameraOpen) { touchX=null; return; }  // ignore while camera open
+  if(window._modalOpen)  { touchX=null; return; }  // ignore while modal open
   if(touchX===null || touchStartCount > 1) { touchX=null; return; }
   const dx = e.changedTouches[0].clientX - touchX;
   if(Math.abs(dx) > 50) goTo(current + (dx<0 ? 1 : -1));
@@ -941,6 +1066,181 @@ document.addEventListener('keydown', e => {
 });
 
 // Init
+// ── SLIDE TRANSICIÓN — Coin spin + buttons ────────────────────────────────────
+(function(){
+  const SPIN_PERIOD  = 4000;   // ms per 360°
+  const DIR_INTERVAL = 10000;  // ms before reversing
+
+  let transAngle   = 0;
+  let transDir     = 1;
+  let transRaf     = null;
+  let transDirTimer= null;
+  let transLast    = null;
+  let transReady   = false;
+  let transTransmitOpen = false;
+
+  const coinInner = document.getElementById('trans-coin-inner');
+
+  // ── Canvas helpers ──────────────────────────────────────────────────────────
+  function transApplyFade(canvas) {
+    const S = canvas.width, R = S/2;
+    const ctx = canvas.getContext('2d');
+    const g = ctx.createRadialGradient(R,R,R*0.82,R,R,R);
+    g.addColorStop(0,'rgba(0,0,0,1)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation='destination-in';
+    ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  function transAddBorder(canvas) {
+    const ctx = canvas.getContext('2d'), R = canvas.width/2;
+    ctx.beginPath(); ctx.arc(R,R,R-2,0,Math.PI*2);
+    ctx.strokeStyle='rgba(26,16,8,0.35)'; ctx.lineWidth=3; ctx.stroke();
+  }
+
+  function transRenderFront() {
+    const canvas = document.getElementById('trans-canvas-front');
+    const portadaEl = document.getElementById('portada-circle');
+    if(!portadaEl || !canvas) return;
+    const src = portadaEl.src;
+    const S = 500, R = S/2;
+    canvas.width = S; canvas.height = S;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,S,S);
+    const img = new Image();
+    img.onload = function() {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(R,R,R,0,Math.PI*2); ctx.clip();
+      const scale = Math.max(S/img.width, S/img.height);
+      const w = img.width*scale, h = img.height*scale;
+      ctx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
+      // Parchment tint only for PNG (Orante), not for user JPEG
+      if(src.startsWith('data:image/png')) {
+        ctx.globalCompositeOperation='source-over';
+      }
+      ctx.fillStyle='rgba(245,240,232,0.12)'; ctx.fillRect(0,0,S,S);
+      ctx.restore();
+      transApplyFade(canvas); transAddBorder(canvas);
+    };
+    img.src = src;
+  }
+
+  function transRenderBack() {
+    const canvas = document.getElementById('trans-canvas-back');
+    if(!canvas) return;
+    const S = 500, R = S/2;
+    canvas.width = S; canvas.height = S;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,S,S);
+    const img = new Image();
+    img.onload = function() {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(R,R,R,0,Math.PI*2); ctx.clip();
+      const scale = Math.max(S/img.width, S/img.height);
+      const w = img.width*scale, h = img.height*scale;
+      ctx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
+      ctx.globalAlpha = 0.80; // 80% opacity
+      ctx.fillStyle = 'rgba(245,240,232,0)'; // no tint, just opacity
+      ctx.restore();
+      // Re-draw at 80% opacity
+      const tmp = document.createElement('canvas');
+      tmp.width = S; tmp.height = S;
+      const tctx = tmp.getContext('2d');
+      tctx.globalAlpha = 0.80;
+      tctx.drawImage(canvas,0,0);
+      ctx.clearRect(0,0,S,S);
+      ctx.drawImage(tmp,0,0);
+      transApplyFade(canvas); transAddBorder(canvas);
+    };
+    img.src = 'naqsh-redondo.png';
+  }
+
+  function transInitCanvases() {
+    if(transReady) return;
+    transReady = true;
+    transRenderFront();
+    transRenderBack();
+  }
+
+  // ── Spin ────────────────────────────────────────────────────────────────────
+  function transReverseDir() {
+    transDir *= -1;
+    transDirTimer = setTimeout(transReverseDir, DIR_INTERVAL);
+  }
+
+  function transSpinFrame(ts) {
+    if(!transLast) transLast = ts;
+    const dt = ts - transLast; transLast = ts;
+    transAngle += transDir * (360 * dt / SPIN_PERIOD);
+    if(coinInner) coinInner.style.transform = `rotateY(${transAngle}deg)`;
+    transRaf = requestAnimationFrame(transSpinFrame);
+  }
+
+  window.transStartSpin = function() {
+    transInitCanvases();
+    if(transRaf) return;
+    transLast = null;
+    transRaf = requestAnimationFrame(transSpinFrame);
+    transDirTimer = setTimeout(transReverseDir, DIR_INTERVAL);
+  };
+
+  window.transStopSpin = function() {
+    if(transRaf) { cancelAnimationFrame(transRaf); transRaf = null; }
+    if(transDirTimer) { clearTimeout(transDirTimer); transDirTimer = null; }
+  };
+
+  // ── Buttons ─────────────────────────────────────────────────────────────────
+  window.transToggleTransmit = function() {
+    transTransmitOpen = !transTransmitOpen;
+    document.getElementById('trans-sub-group').classList.toggle('open', transTransmitOpen);
+  };
+
+  window.transShareLink = function() {
+    const url = window.location.href;
+    try {
+      if(navigator.share) {
+        navigator.share({ url, title:'Naqsh-Athar' }).then(()=>transSetStatus('Vínculo compartido'));
+      } else {
+        navigator.clipboard.writeText(url).then(()=>transSetStatus('Vínculo copiado'));
+      }
+    } catch(e) { transSetStatus(url); }
+    setTimeout(()=>{ if(transTransmitOpen) window.transToggleTransmit(); }, 500);
+  };
+
+  window.transShareImage = function() {
+    const canvas = document.getElementById('trans-canvas-front');
+    if(!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    try {
+      canvas.toBlob(function(blob) {
+        const file = new File([blob],'naqsh-athar.png',{type:'image/png'});
+        if(navigator.canShare && navigator.canShare({files:[file]})) {
+          navigator.share({files:[file],title:'Naqsh-Athar'}).then(()=>transSetStatus('Imagen compartida'));
+        } else { transDownloadImage(dataUrl); }
+      }, 'image/png');
+    } catch(e) { transDownloadImage(dataUrl); }
+    setTimeout(()=>{ if(transTransmitOpen) window.transToggleTransmit(); }, 500);
+  };
+
+  function transDownloadImage(dataUrl) {
+    const a = document.createElement('a');
+    a.href = dataUrl; a.download = 'naqsh-athar.png'; a.click();
+    transSetStatus('Imagen descargada');
+  }
+
+  window.transRegenerar = function() {
+    goTo(6); // El trazo = index 6
+  };
+
+  function transSetStatus(msg) {
+    const el = document.getElementById('trans-status');
+    if(!el) return;
+    el.textContent = msg || '\u00a0'; el.style.opacity = '1';
+    if(msg) setTimeout(()=>{ el.style.opacity='0'; }, 3000);
+  }
+
+})();
+
 goTo(0);
 
 // ══ ACTIVATION STATE ══
