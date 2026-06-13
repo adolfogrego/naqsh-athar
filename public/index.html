@@ -768,7 +768,6 @@
     <div class="slide" id="slide-trans">
       <div class="slide-inner" style="text-align:center;">
         <h2 class="section-heading" style="font-weight:400;">¿Qué debo hacer ahora?</h2>
-        <div class="divider"></div>
 
         <!-- Coin flip -->
         <div class="trans-coin" id="trans-coin">
@@ -1135,21 +1134,12 @@ document.addEventListener('keydown', e => {
     const img = new Image();
     img.onload = function() {
       ctx.save();
+      ctx.globalAlpha = 0.80;
       ctx.beginPath(); ctx.arc(R,R,R,0,Math.PI*2); ctx.clip();
       const scale = Math.max(S/img.width, S/img.height);
       const w = img.width*scale, h = img.height*scale;
       ctx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
-      ctx.globalAlpha = 0.80; // 80% opacity
-      ctx.fillStyle = 'rgba(245,240,232,0)'; // no tint, just opacity
       ctx.restore();
-      // Re-draw at 80% opacity
-      const tmp = document.createElement('canvas');
-      tmp.width = S; tmp.height = S;
-      const tctx = tmp.getContext('2d');
-      tctx.globalAlpha = 0.80;
-      tctx.drawImage(canvas,0,0);
-      ctx.clearRect(0,0,S,S);
-      ctx.drawImage(tmp,0,0);
       transApplyFade(canvas); transAddBorder(canvas);
     };
     img.src = 'naqsh-redondo.png';
