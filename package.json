@@ -2,6 +2,7 @@
   "name": "naqsh-athar",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@vercel/blob": "^0.22.0",
     "@napi-rs/canvas": "^0.1.44",
