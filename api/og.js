@@ -36,7 +36,14 @@ function applyRadialFade(ctx, cx, cy, R, fadeStart) {
 // ── Arabic text image overlay ─────────────────────────────────────────────────
 async function drawArabic(ctx, cx, cy, R) {
   try {
-    const arabicImg = await loadImage('https://naqsh-athar.link/arabic-text.png');
+    const { blobs } = await list({ prefix: 'arabic-text.json' });
+    const arabicBlob = blobs.find(b => b.pathname === 'arabic-text.json');
+    if (!arabicBlob) { console.warn('arabic-text.json not found in blob'); return; }
+    const arabicRes = await fetch(arabicBlob.url);
+    if (!arabicRes.ok) { console.warn('arabic-text.json fetch failed'); return; }
+    const arabicData = await arabicRes.json();
+    if (!arabicData.photo) { console.warn('arabic-text.json has no photo'); return; }
+    const arabicImg = await loadImage(Buffer.from(arabicData.photo.split(',')[1], 'base64'));
     const targetW = R * 1.1;
     const scale = targetW / arabicImg.width;
     const w = arabicImg.width * scale;
@@ -46,7 +53,7 @@ async function drawArabic(ctx, cx, cy, R) {
     ctx.drawImage(arabicImg, cx - w / 2, cy - h / 2, w, h);
     ctx.restore();
   } catch(e) {
-    console.warn('arabic-text.png load failed:', e.message);
+    console.warn('drawArabic failed:', e.message);
   }
 }
 
@@ -218,19 +225,7 @@ async function renderPhotoWithQR(ctx, photoDataUrl, portalUrl) {
   ctx.stroke();
 
   // Arabic overlay for download image (400×400)
-  try {
-    const arabicImg = await loadImage('https://naqsh-athar.link/arabic-text.png');
-    const targetW = R * 1.1;
-    const scale = targetW / arabicImg.width;
-    const w = arabicImg.width * scale;
-    const h = arabicImg.height * scale;
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(arabicImg, R - w / 2, R - h / 2, w, h);
-    ctx.restore();
-  } catch(e) {
-    console.warn('arabic-text.png load failed in QR mode:', e.message);
-  }
+  await drawArabic(ctx, R, R, R);
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
