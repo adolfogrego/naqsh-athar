@@ -1269,12 +1269,14 @@ function hidePortalModal(){
 function showPortalModal(onConfirm, text, btnLabel){
   if(window._modalOpen) return;
   window._modalOpen = true;
-  // Pausar animación del trazo para evitar disparos de eventos falsos
+  // Pausar animación del trazo ANTES del rAF para evitar disparos de eventos falsos
   const tb = document.getElementById('act-trazo-bg');
   if(tb) tb.style.animationPlayState = 'paused';
   if(text) portalModalText.innerHTML = text;
   if(btnLabel) portalModalBtn.textContent = btnLabel;
   portalModal.classList.add('on');
+  // Guard: ignorar cualquier tap en act-wrap durante los próximos 400ms
+  window._ignoreActWrapUntil = Date.now() + 400;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     portalModal.classList.add('visible');
   }));
@@ -1312,17 +1314,25 @@ function showPortalModal(onConfirm, text, btnLabel){
   wrap.addEventListener('touchend', function(e){
     if(_touchMoved) return;            // was a swipe, not a tap
     if(window._modalOpen) return;
+    if(window._ignoreActWrapUntil && Date.now() < window._ignoreActWrapUntil) return;
     if(mode === 'empty'){
       e.stopPropagation();
       showPortalModal(()=>openCam());
+    } else {
+      // En cualquier otro modo, bloquear propagación para evitar que el evento
+      // alcance listeners de otras slides
+      e.stopPropagation();
     }
   });
   wrap.addEventListener('click', function(e){
     // Desktop fallback — mobile fires touchend first so this is a no-op there
     if(window._modalOpen) return;
+    if(window._ignoreActWrapUntil && Date.now() < window._ignoreActWrapUntil) return;
     if(mode === 'empty'){
       e.stopPropagation();
       showPortalModal(()=>openCam());
+    } else {
+      e.stopPropagation();
     }
   });
 })();
@@ -1368,13 +1378,24 @@ document.getElementById('btn-dl-trazo').addEventListener('click', function() {
 });
 
 // Tap en imagen del trazo → modal de confirmación de descarga
-document.querySelector('.trazo-img').addEventListener('click', function() {
-  showPortalModal(
-    function(){ generateFanzinePDF(); },
-    'Se trasladará<br>al papel',
-    'Ahora'
-  );
-});
+// Selección explícita dentro de .trazo-slide para evitar colisiones con slide 6
+const trazoSlide = document.querySelector('.trazo-slide');
+if(trazoSlide) {
+  const trazoImgEl = trazoSlide.querySelector('.trazo-img');
+  if(trazoImgEl) {
+    trazoImgEl.addEventListener('click', function(e) {
+      e.stopPropagation();
+      showPortalModal(
+        function(){ generateFanzinePDF(); },
+        'Se trasladará<br>al papel',
+        'Ahora'
+      );
+    });
+    trazoImgEl.addEventListener('touchend', function(e) {
+      e.stopPropagation();
+    }, {passive: true});
+  }
+}
 
 // Links en sección V → navegar a slide 6
 ['trazo-link-1','trazo-link-2'].forEach(function(id) {
