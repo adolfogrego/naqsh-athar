@@ -2,11 +2,13 @@
   "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/data/:id(\\d{12,15})", "destination": "/api/[id]?id=:id" },
-    { "source": "/:id(\\d{12,15})", "destination": "/index.html" }
+    { "source": "/api/og",                   "destination": "/api/og" },
+    { "source": "/:id(\\d{12,15})",          "destination": "/api/page?id=:id" }
   ],
   "functions": {
     "api/guardar.js": { "maxDuration": 30 },
     "api/[id].js":    { "maxDuration": 10 },
-    "api/og.js":      { "maxDuration": 15 }
+    "api/og.js":      { "maxDuration": 15 },
+    "api/page.js":    { "maxDuration": 10 }
   }
 }
