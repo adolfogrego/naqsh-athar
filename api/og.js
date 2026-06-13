@@ -41,10 +41,18 @@ function drawArabic(ctx, cx, cy, R) {
   const fontSize = Math.round(R * 0.28);
   ctx.save();
   ctx.font = `bold ${fontSize}px serif`;
-  ctx.fillStyle = 'rgba(26,16,8,0.75)';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.direction = 'rtl';
+  // Dark shadow for contrast
+  ctx.shadowColor = 'rgba(26,16,8,0.9)';
+  ctx.shadowBlur = Math.round(fontSize * 0.15);
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(ARABIC, cx, cy);
+  // Second pass: stronger shadow
+  ctx.shadowBlur = Math.round(fontSize * 0.3);
   ctx.fillText(ARABIC, cx, cy);
   ctx.restore();
 }
