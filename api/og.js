@@ -155,7 +155,7 @@ async function drawCircle(ctx, photoDataUrl, cx, cy, R) {
 }
 
 // ── Orante fallback (no blob) ─────────────────────────────────────────────────
-function drawOranteFallback(ctx, cx, cy, R) {
+async function drawOranteFallback(ctx, cx, cy, R) {
   const grad = ctx.createRadialGradient(cx, cy * 0.9, 20, cx, cy, R);
   grad.addColorStop(0, '#ece5d6');
   grad.addColorStop(0.7, '#d8cdb4');
@@ -326,7 +326,7 @@ export default async function handler(req, res) {
         } catch(e) {
           console.warn('orante.json fetch failed:', e.message);
         }
-        if (!drew) drawOranteFallback(ctx, cx, cy, R);
+        if (!drew) await drawOranteFallback(ctx, cx, cy, R);
 
       } else {
         // Case 2: timestamp URL, mode=og → user photo clean
