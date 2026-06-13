@@ -6,9 +6,10 @@
     { "source": "/:id(\\d{12,15})",          "destination": "/api/page?id=:id" }
   ],
   "functions": {
-    "api/guardar.js": { "maxDuration": 30 },
-    "api/[id].js":    { "maxDuration": 10 },
-    "api/og.js":      { "maxDuration": 15 },
-    "api/page.js":    { "maxDuration": 10 }
+    "api/guardar.js":        { "maxDuration": 30 },
+    "api/guardar-orante.js": { "maxDuration": 15 },
+    "api/[id].js":           { "maxDuration": 10 },
+    "api/og.js":             { "maxDuration": 15 },
+    "api/page.js":           { "maxDuration": 10 }
   }
 }
