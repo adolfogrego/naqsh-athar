@@ -93,7 +93,11 @@ async function drawCircle(ctx, photoDataUrl, cx, cy, R) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
+  // Draw arabic last, explicitly on top with source-over
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
   drawArabic(ctx, cx, cy, R);
+  ctx.restore();
 }
 
 // ── Orante fallback (no blob) ─────────────────────────────────────────────────
@@ -116,7 +120,10 @@ function drawOranteFallback(ctx, cx, cy, R) {
   ctx.strokeStyle = 'rgba(26,16,8,0.4)';
   ctx.lineWidth = 3;
   ctx.stroke();
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
   drawArabic(ctx, cx, cy, R);
+  ctx.restore();
 }
 
 // ── Photo circle with QR — for download mode (400×400 square) ────────────────
