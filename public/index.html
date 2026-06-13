@@ -1574,18 +1574,26 @@ const portalModalText = portalModal.querySelector('.portal-modal-text');
 function hidePortalModal(){
   window._modalOpen = false;
   portalModal.classList.remove('visible');
-  // Reanudar animación del trazo
-  const tb = document.getElementById('act-trazo-bg');
+  // Reanudar TODAS las animaciones del círculo
+  const tb  = document.getElementById('act-trazo-bg');
+  const pr  = document.querySelector('.act-pulse-ring');
+  const gr  = document.querySelector('.act-grabbing-ring');
   if(tb) tb.style.animationPlayState = 'running';
+  if(pr) pr.style.animationPlayState = 'running';
+  if(gr) gr.style.animationPlayState = 'running';
   setTimeout(()=>{ portalModal.classList.remove('on'); }, 300);
 }
 
 function showPortalModal(onConfirm, text, btnLabel){
   if(window._modalOpen) return;
   window._modalOpen = true;
-  // Pausar animación del trazo ANTES del rAF para evitar disparos de eventos falsos
-  const tb = document.getElementById('act-trazo-bg');
+  // Pausar TODAS las animaciones del círculo ANTES del rAF
+  const tb  = document.getElementById('act-trazo-bg');
+  const pr  = document.querySelector('.act-pulse-ring');
+  const gr  = document.querySelector('.act-grabbing-ring');
   if(tb) tb.style.animationPlayState = 'paused';
+  if(pr) pr.style.animationPlayState = 'paused';
+  if(gr) gr.style.animationPlayState = 'paused';
   portalModalText.innerHTML = text || 'Se abre el portal<br>de réplica de<br>Naqsh-Athar';
   portalModalBtn.textContent = btnLabel || 'Abrir';
   portalModal.classList.add('on');
