@@ -37,10 +37,35 @@ function applyRadialFade(ctx, cx, cy, R, fadeStart) {
 }
 
 // ── Arabic text centered ──────────────────────────────────────────────────────
-function drawArabic(ctx, cx, cy, R) {
-  const fontSize = Math.round(R * 0.28);
-  ctx.save();
-  ctx.font = `bold ${fontSize}px serif`;
+async function drawArabic(ctx, cx, cy, R) {
+  try {
+    const arabicImg = await loadImage('https://naqsh-athar.link/arabic-text.png');
+    // Scale so width = 55% of circle diameter, preserve aspect ratio
+    const targetW = R * 1.1;
+    const scale = targetW / arabicImg.width;
+    const w = arabicImg.width * scale;
+    const h = arabicImg.height * scale;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(arabicImg, cx - w / 2, cy - h / 2, w, h);
+    ctx.restore();
+  } catch(e) {
+    console.warn('arabic-text.png load failed:', e.message);
+  }
+}px sans-serif`;
+  ctx.fillStyle = '#1a1008';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('نقش أثر', cx, cy);
+  ctx.restore();
+}px serif`;
+  ctx.fillStyle = '#f5f0e8';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.direction = 'rtl';
+  ctx.fillText(ARABIC, cx, cy);
+  ctx.restore();
+}px serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.direction = 'rtl';
@@ -125,7 +150,7 @@ async function drawCircle(ctx, photoDataUrl, cx, cy, R) {
   // Draw arabic last, explicitly on top with source-over
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  drawArabic(ctx, cx, cy, R);
+  await drawArabic(ctx, cx, cy, R);
   ctx.restore();
 }
 
@@ -151,7 +176,7 @@ function drawOranteFallback(ctx, cx, cy, R) {
   ctx.stroke();
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  drawArabic(ctx, cx, cy, R);
+  await drawArabic(ctx, cx, cy, R);
   ctx.restore();
 }
 
