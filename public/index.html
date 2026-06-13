@@ -1272,8 +1272,8 @@ function showPortalModal(onConfirm, text, btnLabel){
   // Pausar animación del trazo ANTES del rAF para evitar disparos de eventos falsos
   const tb = document.getElementById('act-trazo-bg');
   if(tb) tb.style.animationPlayState = 'paused';
-  if(text) portalModalText.innerHTML = text;
-  if(btnLabel) portalModalBtn.textContent = btnLabel;
+  portalModalText.innerHTML = text || 'Se abre el portal<br>de réplica de<br>Naqsh-Athar';
+  portalModalBtn.textContent = btnLabel || 'Abrir';
   portalModal.classList.add('on');
   // Guard: ignorar cualquier tap en act-wrap durante los próximos 400ms
   window._ignoreActWrapUntil = Date.now() + 400;
