@@ -1,6 +1,5 @@
 import { list } from '@vercel/blob';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { join } from 'path';
 
 // ── Arabic text overlay ───────────────────────────────────────────────────────
 // نقش أثر  (U+0646 U+0642 U+0634 U+0020 U+0623 U+062b U+0631)
@@ -48,27 +47,40 @@ function drawArabic(ctx, R) {
 }
 
 // ── Orante parchment circle (base URL, no photo) ──────────────────────────────
-async function renderOrante(ctx, SIZE) {
+function renderOrante(ctx, SIZE) {
   const R = SIZE / 2;
-  const img = await loadImage(path.join(process.cwd(), 'public', 'orante.png'));
   ctx.clearRect(0, 0, SIZE, SIZE);
-  ctx.save();
+
+  // Parchment gradient background
+  const grad = ctx.createRadialGradient(R, R * 0.85, 20, R, R, R);
+  grad.addColorStop(0, '#ece5d6');
+  grad.addColorStop(0.7, '#d8cdb4');
+  grad.addColorStop(1, '#c4b896');
+
   ctx.beginPath();
   ctx.arc(R, R, R, 0, Math.PI * 2);
-  ctx.clip();
-  const scale = Math.max(SIZE / img.width, SIZE / img.height);
-  const w = img.width * scale;
-  const h = img.height * scale;
-  ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
-  ctx.restore();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Subtle inner ring
+  ctx.beginPath();
+  ctx.arc(R, R, R - 8, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(90,62,40,0.18)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
   applyRadialFade(ctx, R, 0.82);
+
+  // Outer border
   ctx.beginPath();
   ctx.arc(R, R, R - 2, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(26,16,8,0.4)';
   ctx.lineWidth = 3;
   ctx.stroke();
+
   drawArabic(ctx, R);
 }
+
 // ── User photo circle (clean, no QR) — for OG mode ───────────────────────────
 async function renderPhotoClean(ctx, photoDataUrl, SIZE) {
   const R = SIZE / 2;
@@ -219,7 +231,7 @@ export default async function handler(req, res) {
   try {
     // ── Case 1: No ID → Orante (base URL) ───────────────────────────────────
     if (!id) {
-      await renderOrante(ctx, SIZE);
+      renderOrante(ctx, SIZE);
       const png = canvas.toBuffer('image/png');
       res.setHeader('Content-Type', 'image/png');
       res.setHeader('Cache-Control', 'public, max-age=86400');
