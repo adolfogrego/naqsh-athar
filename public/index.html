@@ -1609,9 +1609,12 @@ function showPortalModal(onConfirm, text, btnLabel){
     portalModal.classList.remove('visible');
     setTimeout(()=>{ portalModal.classList.remove('on'); onConfirm(); }, 300);
   };
+  // Guard timestamp — ignore backdrop clicks for 600ms after opening
+  const _modalOpenedAt = Date.now();
   // Click/tap outside circle — close without action, stop bubbling
   portalModal.onclick = function(e){
     if(e.target === portalModal){
+      if(Date.now() - _modalOpenedAt < 600) return; // ignore ghost click
       e.stopPropagation();
       hidePortalModal();
     }
@@ -1619,6 +1622,7 @@ function showPortalModal(onConfirm, text, btnLabel){
   // Mobile: also handle touchend on backdrop (prevents ghost click issues)
   portalModal.ontouchend = function(e){
     if(e.target === portalModal){
+      if(Date.now() - _modalOpenedAt < 600) return; // ignore ghost touch
       e.stopPropagation();
       e.preventDefault();
       hidePortalModal();
