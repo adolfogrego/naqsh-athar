@@ -1392,14 +1392,20 @@ function initPortadaFlip(){
         const sz = flipEl.offsetWidth || 280;
         flipCanvas.width = flipCanvas.height = sz;
         const ctx = flipCanvas.getContext('2d');
+        // Scale QR to ~90% of canvas, centered, leaving transparent ring
+        // to match the visual footprint of Orante on the front face
+        const scale = 0.90;
+        const qrSz  = Math.round(sz * scale);
+        const off   = Math.round((sz - qrSz) / 2);
+        ctx.clearRect(0, 0, sz, sz);
         ctx.save();
         ctx.beginPath(); ctx.arc(sz/2,sz/2,sz/2,0,Math.PI*2); ctx.clip();
-        ctx.drawImage(img,0,0,sz,sz);
+        ctx.drawImage(img, off, off, qrSz, qrSz);
         ctx.restore();
         qrReady = true;
       };
       img.src = dataUrl;
-    }, 'screen');
+    }, 'portada');
   }
 
   if(flipEl){
@@ -2681,11 +2687,13 @@ function showOfflineResult() {
 // ── Styled circular QR with photo background ─────────────────────────────
 // Uses qrcode-generator lib for matrix access, draws dots manually
 function generateStyledQR(url, photoDataUrl, callback, mode) {
-  // mode: 'screen' = text visible, dots faint (for display)
-  //       'cover'  = text visible, dots very faint (for PDF cover — visually readable)
-  //       'print'  = dots dark and scannable, text visible (for PDF corners) [default]
-  const isScreen = (mode === 'screen');
-  const isCover  = (mode === 'cover');
+  // mode: 'screen'  = dots at 50% opacity (for display, result canvas)
+  //       'portada' = same as screen but QR area reduced to 68% (for flip card)
+  //       'cover'   = dots very faint (for PDF cover — visually readable)
+  //       'print'   = dots dark and scannable (for PDF corners) [default]
+  const isScreen  = (mode === 'screen' || mode === 'portada');
+  const isPortada = (mode === 'portada');
+  const isCover   = (mode === 'cover');
   function doRender(qr) {
     const SIZE = 400;
     const c = document.createElement('canvas');
@@ -2716,11 +2724,12 @@ function generateStyledQR(url, photoDataUrl, callback, mode) {
 
       // ── QR matrix ──────────────────────────────────────────────────
       const n = qr.getModuleCount();
-      const QS = SIZE * 0.76;
+      // portada mode: smaller QR to visually match Orante's apparent size
+      const QS = SIZE * (isPortada ? 0.68 : 0.76);
       const cell = QS / n;
       const off = (SIZE - QS) / 2;
       const dot_r = cell * 0.38;
-      const dotOpacity = isScreen ? 0.12 : isCover ? 0.20 : 0.85;
+      const dotOpacity = isScreen ? 0.50 : isCover ? 0.20 : 0.85;
       const INK = `rgba(26,16,8,${dotOpacity})`;
       const WHITE = 'rgba(0,0,0,0)';
 
