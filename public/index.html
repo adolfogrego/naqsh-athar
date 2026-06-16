@@ -1607,20 +1607,22 @@ function showPortalModal(onConfirm, text, btnLabel){
     setTimeout(()=>{ portalModal.classList.remove('on'); onConfirm(); }, 300);
   };
   // Click/tap outside circle — close without action, stop bubbling
-  portalModal.onclick = function(e){
-    if(e.target === portalModal){
-      e.stopPropagation();
-      hidePortalModal();
-    }
-  };
-  // Mobile: also handle touchend on backdrop (prevents ghost click issues)
-  portalModal.ontouchend = function(e){
-    if(e.target === portalModal){
-      e.stopPropagation();
-      e.preventDefault();
-      hidePortalModal();
-    }
-  };
+  // Use { once:true } so stale handlers never accumulate across re-opens.
+  // Also delay 350ms so the opening touch event can never immediately close the modal.
+  const _modalOpenedAt = Date.now();
+  portalModal.addEventListener('click', function _backdropClick(e){
+    if(e.target !== portalModal) return;
+    if(Date.now() - _modalOpenedAt < 350) return; // ignore the opening tap
+    e.stopPropagation();
+    hidePortalModal();
+  }, { once: true });
+  portalModal.addEventListener('touchend', function _backdropTouch(e){
+    if(e.target !== portalModal) return;
+    if(Date.now() - _modalOpenedAt < 350) return; // ignore the opening tap
+    e.stopPropagation();
+    e.preventDefault();
+    hidePortalModal();
+  }, { once: true });
 }
 
 // Tap/click on act-wrap — catches tap on trazo, portal, and vp
@@ -1722,7 +1724,7 @@ if(trazoSlide) {
   if (el) {
     el.addEventListener('click', function(e) {
       e.preventDefault();
-      goTo(6);
+      goTo(7); // slide 7 = Activar (cámara)
     });
   }
 });
@@ -2171,13 +2173,35 @@ async function generateFanzinePDF() {
     const fontItal = await doc.embedFont(PDFLib.StandardFonts.TimesRomanItalic);
     const fonts = { regular: fontReg, bold: fontBold, italic: fontItal };
 
-    // Arabic font — loaded once, reused in Front Cover and Back Cover
-    let arabicFont = null;
-    try {
-      const arabicFontBytes = await fetch('https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUpvrIw74NL.woff2')
-        .then(r => r.arrayBuffer()).catch(() => null);
-      if(arabicFontBytes) arabicFont = await doc.embedFont(arabicFontBytes, {subset:false});
-    } catch(e) { /* Arabic font unavailable — skip silently */ }
+    // Arabic text helper — renders نقش أثر as PNG using browser's Amiri font
+    // (already loaded via Google Fonts in the HTML head)
+    // Returns a pdf-lib image object, or null if rendering fails.
+    async function makeArabicImg(doc, widthPt, heightPt) {
+      try {
+        const SCALE = 3; // render at 3x for sharpness
+        const W = Math.round(widthPt * SCALE);
+        const H = Math.round(heightPt * SCALE);
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        const ctx = cv.getContext('2d');
+        ctx.clearRect(0, 0, W, H);
+        const fontSize = Math.round(heightPt * SCALE * 0.55);
+        ctx.font = 'bold ' + fontSize + 'px Amiri, serif';
+        ctx.fillStyle = '#1a1008';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.direction = 'rtl';
+        ctx.fillText('نقش أثر', W / 2, H / 2);
+        const dataUrl = cv.toDataURL('image/png');
+        const b64 = dataUrl.split(',')[1];
+        const bin = atob(b64);
+        const buf = new Uint8Array(bin.length);
+        for(let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        return await doc.embedPng(buf);
+      } catch(e) {
+        return null;
+      }
+    }
 
     // ── Prepare QR images ─────────────────────────────────────────────────
     const originMatch = document.head.innerHTML.match(/NAQSH_ORIGIN:\s*(https?:\/\/\S+)\s*-->/);
@@ -2286,19 +2310,22 @@ async function generateFanzinePDF() {
       size: bcSize, font: fontReg, color: DIM
     });
 
-    // Arabic نقش أثر — above QR (between QR top and fold line), same as Front Cover
-    if(arabicFont) {
-      const arabicText = 'نقش أثر';
-      const aSize  = 18;
-      const qrSzBC_a = Math.min(PW, PH) * 0.65;
-      const qrTopY   = (PH - qrSzBC_a)/2 + qrSzBC_a; // top edge of QR in PDF coords
-      const gapCenter = qrTopY + (PH - qrTopY) / 2;
-      const aW = arabicFont.widthOfTextAtSize(arabicText, aSize);
-      pageA.drawText(arabicText, {
-        x: 2*PW + (PW - aW)/2,
-        y: gapCenter - aSize/2,
-        size: aSize, font: arabicFont, color: INK
-      });
+    // Arabic نقش أثر — above QR, rendered as PNG image (guarantees Amiri rendering)
+    {
+      const qrSzBC_a  = Math.min(PW, PH) * 0.65;
+      const qrTopY    = (PH - qrSzBC_a)/2 + qrSzBC_a;
+      const gapH      = PH - qrTopY;           // height of gap above QR
+      const aImgW     = PW * 0.7;
+      const aImgH     = Math.max(gapH * 0.6, 20);
+      const aImg = await makeArabicImg(doc, aImgW, aImgH);
+      if(aImg) {
+        pageA.drawImage(aImg, {
+          x: 2*PW + (PW - aImgW)/2,
+          y: qrTopY + (gapH - aImgH)/2,
+          width: aImgW, height: aImgH,
+          opacity: 0.85
+        });
+      }
     }
 
     // Front Cover (x=3*PW, y=0): user photo with fade, or Orante
@@ -2320,18 +2347,21 @@ async function generateFanzinePDF() {
         size: fcSize, font: fontReg, color: DIM
       });
 
-      // Arabic نقش أثر — physically above the image (between image top and fold line)
-      if(arabicFont) {
-        const arabicText = 'نقش أثر';
-        const aSize  = 18;
-        const imgTopY   = imgY + imgSz;            // top edge of image in PDF coords
-        const gapCenter = imgTopY + (PH - imgTopY) / 2; // center of gap above image
-        const aW = arabicFont.widthOfTextAtSize(arabicText, aSize);
-        pageA.drawText(arabicText, {
-          x: 3*PW + (PW - aW)/2,
-          y: gapCenter - aSize/2,
-          size: aSize, font: arabicFont, color: INK
-        });
+      // Arabic نقش أثر — above image (between image top and fold line), PNG for reliable rendering
+      {
+        const imgTopY = imgY + imgSz;
+        const gapH    = PH - imgTopY;
+        const aImgW   = PW * 0.7;
+        const aImgH   = Math.max(gapH * 0.6, 20);
+        const aImg = await makeArabicImg(doc, aImgW, aImgH);
+        if(aImg) {
+          pageA.drawImage(aImg, {
+            x: 3*PW + (PW - aImgW)/2,
+            y: imgTopY + (gapH - aImgH)/2,
+            width: aImgW, height: aImgH,
+            opacity: 0.85
+          });
+        }
       }
     }
 
