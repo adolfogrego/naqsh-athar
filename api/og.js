@@ -72,28 +72,46 @@ function drawBackground(ctx) {
 async function drawCircle(ctx, photoDataUrl, cx, cy, R) {
   const photoImg = await loadImage(Buffer.from(photoDataUrl.split(',')[1], 'base64'));
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, R, 0, Math.PI * 2);
-  ctx.clip();
-  const scale = Math.max((R * 2) / photoImg.width, (R * 2) / photoImg.height);
+  // Work on an auxiliary canvas the size of the circle bounding box.
+  // This keeps destination-in (fade) isolated — the main parchment background
+  // is never touched and shows through naturally wherever alpha drops.
+  const D = R * 2;
+  const aux = createCanvas(D, D);
+  const actx = aux.getContext('2d');
+
+  // 1. Parchment base inside circle (handles transparent PNGs like Orante)
+  actx.fillStyle = '#f5f0e8';
+  actx.beginPath();
+  actx.arc(R, R, R, 0, Math.PI * 2);
+  actx.fill();
+
+  // 2. Photo clipped to circle
+  actx.save();
+  actx.beginPath();
+  actx.arc(R, R, R, 0, Math.PI * 2);
+  actx.clip();
+  const scale = Math.max(D / photoImg.width, D / photoImg.height);
   const w = photoImg.width * scale;
   const h = photoImg.height * scale;
-  ctx.drawImage(photoImg, cx - w / 2, cy - h / 2, w, h);
-  ctx.fillStyle = 'rgba(245,240,232,0.18)';
-  ctx.fill();
-  ctx.restore();
+  actx.drawImage(photoImg, R - w / 2, R - h / 2, w, h);
+  actx.fillStyle = 'rgba(245,240,232,0.18)';
+  actx.fill();
+  actx.restore();
 
-  applyRadialFade(ctx, cx, cy, R, 0.82);
+  // 3. Radial fade on the auxiliary canvas only
+  const innerR = R * 0.82;
+  const grad = actx.createRadialGradient(R, R, innerR, R, R, R);
+  grad.addColorStop(0, 'rgba(0,0,0,1)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  actx.globalCompositeOperation = 'destination-in';
+  actx.fillStyle = grad;
+  actx.fillRect(0, 0, D, D);
+  actx.globalCompositeOperation = 'source-over';
 
-  // Restore parchment behind fade edge
-  ctx.save();
-  ctx.globalCompositeOperation = 'destination-over';
-  ctx.fillStyle = '#f5f0e8';
-  ctx.fillRect(0, 0, OG_W, OG_H);
-  ctx.restore();
+  // 4. Composite the circle onto the main canvas (parchment shows through fade)
+  ctx.drawImage(aux, cx - R, cy - R);
 
-  // Border
+  // 5. Border
   ctx.beginPath();
   ctx.arc(cx, cy, R - 2, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(26,16,8,0.35)';
