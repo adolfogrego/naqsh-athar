@@ -2171,6 +2171,14 @@ async function generateFanzinePDF() {
     const fontItal = await doc.embedFont(PDFLib.StandardFonts.TimesRomanItalic);
     const fonts = { regular: fontReg, bold: fontBold, italic: fontItal };
 
+    // Arabic font — loaded once, reused in Front Cover and Back Cover
+    let arabicFont = null;
+    try {
+      const arabicFontBytes = await fetch('https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUpvrIw74NL.woff2')
+        .then(r => r.arrayBuffer()).catch(() => null);
+      if(arabicFontBytes) arabicFont = await doc.embedFont(arabicFontBytes, {subset:false});
+    } catch(e) { /* Arabic font unavailable — skip silently */ }
+
     // ── Prepare QR images ─────────────────────────────────────────────────
     const originMatch = document.head.innerHTML.match(/NAQSH_ORIGIN:\s*(https?:\/\/\S+)\s*-->/);
     const originUrl   = originMatch ? originMatch[1].trim() : null;
@@ -2269,53 +2277,61 @@ async function generateFanzinePDF() {
       y: (PH - qrSzBC)/2,
       width: qrSzBC, height: qrSzBC
     });
-    const bcUrl = userUrl.replace('https://','');
-    const bcLw = fontReg.widthOfTextAtSize(bcUrl, 6);
+    // URL — same size as Front Cover
+    const bcUrl  = userUrl.replace('https://','');
+    const bcSize = 9;
+    const bcLw   = fontReg.widthOfTextAtSize(bcUrl, bcSize);
     pageA.drawText(bcUrl, {
-      x: 2*PW + (PW - bcLw)/2, y: MAR*0.7,
-      size:6, font:fontReg, color:DIM
+      x: 2*PW + (PW - bcLw)/2, y: MAR*0.9,
+      size: bcSize, font: fontReg, color: DIM
     });
 
-    // Front Cover (x=3*PW, y=0): user photo with fade, or Orante
-    if(frontImg) {
-      const imgSz = Math.min(PW, PH) * 0.76;
-      pageA.drawImage(frontImg, {
-        x: 3*PW + (PW - imgSz)/2,
-        y: (PH - imgSz)/2,
-        width: imgSz, height: imgSz
+    // Arabic نقش أثر — above QR (between QR top and fold line), same as Front Cover
+    if(arabicFont) {
+      const arabicText = 'نقش أثر';
+      const aSize  = 18;
+      const qrSzBC_a = Math.min(PW, PH) * 0.65;
+      const qrTopY   = (PH - qrSzBC_a)/2 + qrSzBC_a; // top edge of QR in PDF coords
+      const gapCenter = qrTopY + (PH - qrTopY) / 2;
+      const aW = arabicFont.widthOfTextAtSize(arabicText, aSize);
+      pageA.drawText(arabicText, {
+        x: 2*PW + (PW - aW)/2,
+        y: gapCenter - aSize/2,
+        size: aSize, font: arabicFont, color: INK
       });
     }
-    const fcLabel = 'naqsh-athar.link';
-    const fcLw = fontReg.widthOfTextAtSize(fcLabel, 6);
-    pageA.drawText(fcLabel, {
-      x: 3*PW + (PW - fcLw)/2, y: MAR*0.7,
-      size:6, font:fontReg, color:DIM
-    });
 
-    // Arabic text نقش أثر — in the space BETWEEN the image top edge and the fold line
-    // Front Cover: fold at y=PH (top), image top at y = (PH-imgSz)/2 + imgSz
-    // Space between image top and fold ≈ 36pt — place text centered in that gap
+    // Front Cover (x=3*PW, y=0): user photo with fade, or Orante
     {
-      const imgSzFC = Math.min(PW, PH) * 0.76;
-      const imgTopY = (PH - imgSzFC)/2 + imgSzFC; // top edge of image in PDF coords
-      const gapCenter = imgTopY + (PH - imgTopY) / 2; // vertical center of gap
-      const arabicText = 'نقش أثر';
-      try {
-        const arabicFontBytes = await fetch('https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUpvrIw74NL.woff2')
-          .then(r=>r.arrayBuffer()).catch(()=>null);
-        if(arabicFontBytes) {
-          const arabicFont = await doc.embedFont(arabicFontBytes, {subset:false});
-          const aSize = 13;
-          const aW = arabicFont.widthOfTextAtSize(arabicText, aSize);
-          // y = gapCenter positions baseline in the middle of the gap
-          pageA.drawText(arabicText, {
-            x: 3*PW + (PW - aW)/2,
-            y: gapCenter - aSize/2,
-            size: aSize, font: arabicFont, color: INK
-          });
-        }
-      } catch(e) {
-        // Arabic font unavailable — skip silently
+      const imgSz = Math.min(PW, PH) * 0.76;
+      const imgX  = 3*PW + (PW - imgSz)/2;
+      const imgY  = (PH - imgSz)/2;
+
+      if(frontImg) {
+        pageA.drawImage(frontImg, { x:imgX, y:imgY, width:imgSz, height:imgSz });
+      }
+
+      // URL — larger size for legibility
+      const fcLabel = 'naqsh-athar.link';
+      const fcSize  = 9;
+      const fcLw    = fontReg.widthOfTextAtSize(fcLabel, fcSize);
+      pageA.drawText(fcLabel, {
+        x: 3*PW + (PW - fcLw)/2, y: MAR*0.9,
+        size: fcSize, font: fontReg, color: DIM
+      });
+
+      // Arabic نقش أثر — physically above the image (between image top and fold line)
+      if(arabicFont) {
+        const arabicText = 'نقش أثر';
+        const aSize  = 18;
+        const imgTopY   = imgY + imgSz;            // top edge of image in PDF coords
+        const gapCenter = imgTopY + (PH - imgTopY) / 2; // center of gap above image
+        const aW = arabicFont.widthOfTextAtSize(arabicText, aSize);
+        pageA.drawText(arabicText, {
+          x: 3*PW + (PW - aW)/2,
+          y: gapCenter - aSize/2,
+          size: aSize, font: arabicFont, color: INK
+        });
       }
     }
 
