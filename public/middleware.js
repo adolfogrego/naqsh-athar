@@ -4,18 +4,19 @@ export function middleware(req) {
   const basicAuth = req.headers.get('authorization')
 
   if (basicAuth) {
+    // .split(' ')[1] elimina la palabra "Basic " para leer solo el texto secreto
     const authValue = basicAuth.split(' ')[1]
-    // El navegador junta el usuario y la clave separados por un bicho de dos puntos (:)
-    // Con split(':') los separamos. El [1] significa que solo nos importa la contraseña.
-    const pwd = atob(authValue).split(':')[1]
+    
+    // Desencripta los datos ingresados
+    const [user, pwd] = atob(authValue).split(':')
 
-    // COLOCA TU CONTRASEÑA AQUÍ:
+    // CAMBIA TU CONTRASEÑA AQUÍ:
     if (pwd === 'ORANTE') {
       return NextResponse.next()
     }
   }
 
-  // Si la clave no es correcta, vuelve a pedirla
+  // Si no hay contraseña o es incorrecta, muestra el candado
   return new NextResponse('Se requiere autenticación', {
     status: 401,
     headers: {
@@ -25,5 +26,6 @@ export function middleware(req) {
 }
 
 export const config = {
+  // Este buscador le dice a Vercel que aplique la contraseña en TODO el sitio
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
