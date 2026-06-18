@@ -1200,17 +1200,23 @@ document.addEventListener('keydown', e => {
   };
 
   window.transShareImage = function() {
-    const canvas = document.getElementById('trans-canvas-front');
-    if(!canvas) return;
-    const dataUrl = canvas.toDataURL('image/png');
-    try {
-      canvas.toBlob(function(blob) {
-        const file = new File([blob],'naqsh-athar.png',{type:'image/png'});
+    const dataUrl = window._styledQRUrl || document.getElementById('trans-canvas-front').toDataURL('image/png');
+    async function dataUrlToFile(du, name) {
+      const res = await fetch(du);
+      const blob = await res.blob();
+      return new File([blob], name, { type: 'image/png' });
+    }
+    (async function() {
+      try {
+        const file = await dataUrlToFile(dataUrl, 'naqsh-athar.png');
         if(navigator.canShare && navigator.canShare({files:[file]})) {
-          navigator.share({files:[file],title:'Naqsh-Athar'}).then(()=>transSetStatus('Imagen compartida'));
-        } else { transDownloadImage(dataUrl); }
-      }, 'image/png');
-    } catch(e) { transDownloadImage(dataUrl); }
+          await navigator.share({files:[file],title:'Naqsh-Athar'});
+          transSetStatus('Imagen compartida');
+          return;
+        }
+      } catch(e) { /* cancelled or not supported — fall through */ }
+      transDownloadImage(dataUrl);
+    })();
     setTimeout(()=>{ if(transTransmitOpen) window.transToggleTransmit(); }, 500);
   };
 
