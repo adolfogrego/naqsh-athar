@@ -794,6 +794,7 @@
           <div class="trans-sub-group" id="trans-sub-group">
             <button class="trans-btn trans-btn-sub" onclick="transShareLink()">Vínculo</button>
             <button class="trans-btn trans-btn-sub" onclick="transShareImage()">Imagen</button>
+            <button class="trans-btn trans-btn-sub" onclick="transShareFolio()">Folio</button>
           </div>
           <button class="trans-btn trans-btn-regenerar" onclick="transRegenerar()">
             Regenerar
@@ -882,7 +883,7 @@
           <p class="dl-label" style="font-size:1.05rem;letter-spacing:.02em;margin-bottom:1.2rem;text-transform:none;font-style:normal;">replicables sobre las superficies donde ejercerán su influencia:</p>
           <button class="dl-btn" id="dl-btn-png">Una imagen</button>
           <button class="dl-btn" id="dl-btn-html">Un vínculo</button>
-          <button class="dl-btn" id="dl-btn-pdf">Un documento</button>
+          <button class="dl-btn" id="dl-btn-pdf">Un folio</button>
           <p class="status-line" id="act-status"></p>
           <hr class="dl-divider" style="border:none;border-top:1px solid rgba(245,240,232,0.35);margin:1.2rem auto .4rem;max-width:120px;"/>
           <button class="rtext on" id="act-btn-restart" style="font-size:1rem;font-weight:bold;letter-spacing:.12em;margin-top:.5rem;">Regenerar Naqsh-Athar</button>
@@ -1218,6 +1219,11 @@ document.addEventListener('keydown', e => {
     a.href = dataUrl; a.download = 'naqsh-athar.png'; a.click();
     transSetStatus('Imagen descargada');
   }
+
+  window.transShareFolio = function() {
+    generateFanzinePDF();
+    setTimeout(()=>{ if(transTransmitOpen) window.transToggleTransmit(); }, 500);
+  };
 
   window.transRegenerar = function() {
     goTo(6); // El trazo = index 6
