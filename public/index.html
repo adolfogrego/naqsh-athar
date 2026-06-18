@@ -1400,8 +1400,6 @@ function initPortadaFlip(){
     }
 
     generateStyledQR(url, photoData, function(dataUrl){
-      // Store for transShareImage — available even if portada was never flipped
-      if(!window._styledQRUrl) window._styledQRUrl = dataUrl;
       const img = new Image();
       img.onload = function(){
         const sz = flipEl.offsetWidth || 280;
@@ -1421,6 +1419,12 @@ function initPortadaFlip(){
       };
       img.src = dataUrl;
     }, 'portada');
+    // Generate print-quality version for transShareImage (same url + photo, mode 'print')
+    if(!window._styledQRUrl) {
+      generateStyledQR(url, photoData, function(printDataUrl){
+        if(!window._styledQRUrl) window._styledQRUrl = printDataUrl;
+      }, 'print');
+    }
   }
 
   if(flipEl){
