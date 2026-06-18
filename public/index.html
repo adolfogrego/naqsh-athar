@@ -996,7 +996,7 @@ function goTo(n) {
                      (current === TRAZO_IDX && n === TRANS_IDX);
 
   // Stop/start coin spin based on destination
-  if(n === TRANS_IDX) { transStartSpin(); }
+  if(n === TRANS_IDX) { transStartSpin(); if(window._renderPortadaQR) window._renderPortadaQR(); }
   else { transStopSpin(); }
 
   if(isCircularJump || isFadeJump) {
@@ -1394,6 +1394,8 @@ function initPortadaFlip(){
     }
 
     generateStyledQR(url, photoData, function(dataUrl){
+      // Store for transShareImage — available even if portada was never flipped
+      if(!window._styledQRUrl) window._styledQRUrl = dataUrl;
       const img = new Image();
       img.onload = function(){
         const sz = flipEl.offsetWidth || 280;
@@ -1423,6 +1425,8 @@ function initPortadaFlip(){
       flipEl.classList.toggle('flipped');
     });
   }
+  // Expose so goTo() can pre-warm _styledQRUrl when entering slide-trans
+  window._renderPortadaQR = renderPortadaQR;
 }
 const dlGroup  = document.getElementById('dl-group');
 // btnCycle removed
